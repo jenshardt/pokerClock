@@ -1,0 +1,23 @@
+# Java
+*.class
+*.jar
+*.war
+*.ear
+/target
+/mvnw
+/mvnw.cmd
+/.mvn
+
+# Node
+/node_modules
+/frontend/node_modules
+/frontend/dist
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# VS Code
+.vscode/
+
+# Misc
+*.log
