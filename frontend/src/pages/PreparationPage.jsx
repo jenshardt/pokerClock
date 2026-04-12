@@ -7,11 +7,12 @@ function getSeatLayout(table) {
       return {
         player,
         isNeutralDealer: false,
+        angle,
         x: 50 + 45 * Math.cos(angle),
-        y: 50 + 30 * Math.sin(angle),
+        y: 50 + 38 * Math.sin(angle),
       };
     });
-    return [{ player: 'Neutraler Dealer', isNeutralDealer: true, x: 50, y: 20 }, ...playerSeats];
+    return [{ player: 'Neutraler Dealer', isNeutralDealer: true, angle: -Math.PI / 2, x: 50, y: 8 }, ...playerSeats];
   }
 
   return table.players.map((player, index) => {
@@ -19,8 +20,9 @@ function getSeatLayout(table) {
     return {
       player,
       isNeutralDealer: false,
+      angle,
       x: 50 + 45 * Math.cos(angle),
-      y: 50 + 30 * Math.sin(angle),
+      y: 50 + 38 * Math.sin(angle),
     };
   });
 }
@@ -30,6 +32,26 @@ function getTablePopupText(table) {
   const smallBlindText = table.smallBlind || 'Nicht gesetzt';
   const bigBlindText = table.bigBlind || 'Nicht gesetzt';
   return `Dealer: ${dealerText}\nSmall Blind: ${smallBlindText}\nBig Blind: ${bigBlindText}`;
+}
+
+function getMarkerPosition(angle) {
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+
+  let markerX = 50 + 30 * cos;
+  let markerY = 50 + 24 * sin;
+
+  markerX -= Math.sign(cos) * 6 * Math.abs(cos);
+
+  if (sin >= 0.72) {
+    markerY -= 6;
+  } else if (sin <= -0.72) {
+    markerY += 4;
+  } else {
+    markerY += 4 * Math.abs(cos);
+  }
+
+  return { x: markerX, y: markerY };
 }
 
 export default function PreparationPage({
@@ -74,15 +96,15 @@ export default function PreparationPage({
                 const isDealerSeat = seat.isNeutralDealer || (!table.neutralDealer && seat.player === table.dealer);
                 const isSmallBlindSeat = !seat.isNeutralDealer && seat.player === table.smallBlind;
                 const isBigBlindSeat = !seat.isNeutralDealer && seat.player === table.bigBlind;
-                const markerX = 50 + (x - 50) * 0.62;
-                const markerY = 50 + (y - 50) * 0.62;
+                const hasRoleMarker = isDealerSeat || isSmallBlindSeat || isBigBlindSeat;
+                const markerPosition = getMarkerPosition(seat.angle);
 
                 return (
                   <div key={`${table.tableName}-${seat.player}-${index}`}>
                     {isDealerSeat && (
                       <span
                         className={`${styles.tableMarker} ${styles.markerDealer}`}
-                        style={{ left: `${markerX}%`, top: `${markerY}%` }}
+                        style={{ left: `${markerPosition.x}%`, top: `${markerPosition.y}%` }}
                       >
                         Dealer
                       </span>
@@ -90,7 +112,7 @@ export default function PreparationPage({
                     {isSmallBlindSeat && (
                       <span
                         className={`${styles.tableMarker} ${styles.markerSb}`}
-                        style={{ left: `${markerX}%`, top: `${markerY}%` }}
+                        style={{ left: `${markerPosition.x}%`, top: `${markerPosition.y}%` }}
                       >
                         Small Blind
                       </span>
@@ -98,7 +120,7 @@ export default function PreparationPage({
                     {isBigBlindSeat && (
                       <span
                         className={`${styles.tableMarker} ${styles.markerBb}`}
-                        style={{ left: `${markerX}%`, top: `${markerY}%` }}
+                        style={{ left: `${markerPosition.x}%`, top: `${markerPosition.y}%` }}
                       >
                         Big Blind
                       </span>
@@ -106,6 +128,7 @@ export default function PreparationPage({
                     <div
                       className={[
                         styles.seatPill,
+                        hasRoleMarker && styles.markedSeat,
                         isDealerSeat && styles.dealerSeat,
                         seat.isNeutralDealer && styles.neutralSeat,
                       ].filter(Boolean).join(' ')}

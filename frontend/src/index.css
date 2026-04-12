@@ -23,6 +23,17 @@ body {
   padding: 28px 20px 50px;
 }
 
+.loading-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+}
+
+.loading-card {
+  width: min(360px, 100%);
+  text-align: center;
+}
+
 .hero {
   display: flex;
   justify-content: space-between;
@@ -34,6 +45,12 @@ body {
   background: rgba(7, 29, 20, 0.75);
   backdrop-filter: blur(2px);
   margin-bottom: 18px;
+}
+
+.hero-side {
+  display: flex;
+  align-items: center;
+  gap: 14px;
 }
 
 .kicker {
@@ -65,12 +82,51 @@ p {
   color: #d6ac57;
 }
 
+.user-pill {
+  display: grid;
+  gap: 2px;
+  min-width: 140px;
+  padding: 10px 14px;
+  border: 1px solid rgba(214, 172, 87, 0.35);
+  border-radius: 12px;
+  background: rgba(4, 22, 14, 0.88);
+}
+
+.user-pill strong {
+  font-size: 14px;
+}
+
+.user-pill span {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #d6ac57;
+}
+
 .message-banner {
   margin-bottom: 14px;
   padding: 12px 14px;
   border-radius: 12px;
   border: 1px solid #446a57;
   background: rgba(11, 47, 27, 0.8);
+}
+
+.auth-popup {
+  position: fixed;
+  left: 50%;
+  top: 48px;
+  transform: translateX(-50%);
+  z-index: 20;
+  max-width: min(88vw, 520px);
+  padding: 14px 18px;
+  border: 1px solid rgba(214, 172, 87, 0.6);
+  border-radius: 14px;
+  background: rgba(7, 29, 20, 0.96);
+  box-shadow: 0 18px 30px rgba(0, 0, 0, 0.38);
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: #f7f3e8;
 }
 
 .card {
@@ -145,6 +201,12 @@ button {
   font-weight: 600;
 }
 
+button:disabled,
+input:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+}
+
 .primary-button {
   background: linear-gradient(120deg, #c9a14f, #ddbe7d);
   color: #1d1708;
@@ -165,6 +227,15 @@ button {
   .hero {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .hero-side {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .user-pill {
+    width: 100%;
   }
 
   .toolbar {
