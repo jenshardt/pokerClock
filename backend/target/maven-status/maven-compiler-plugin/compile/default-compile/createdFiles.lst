@@ -1,6 +1,6 @@
 com\pokerclock\PokerClockApplication.class
-com\pokerclock\api\TournamentStatusResponse$Builder.class
 com\pokerclock\api\TournamentSetupRequest.class
 com\pokerclock\api\TournamentStatusResponse.class
 com\pokerclock\controller\TournamentController.class
 com\pokerclock\service\TournamentService.class
+com\pokerclock\api\TournamentStatusResponse$Builder.class

@@ -7,6 +7,7 @@ import com.pokerclock.repository.TournamentRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 
@@ -23,7 +24,7 @@ public class TournamentService {
     public void setupTournament(TournamentSetupRequest request) {
         Tournament tournament = new Tournament();
         tournament.setTournamentName(request.getTournamentName());
-        tournament.setParticipants(request.getParticipants());
+        tournament.setParticipants(new ArrayList<>(request.getParticipants()));
         tournament.setTableCount(request.getTableCount());
         tournament.setSeatsPerTable(request.getSeatsPerTable());
         tournament.setStartingChips(request.getStartingChips());

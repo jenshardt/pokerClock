@@ -62,7 +62,10 @@ Das Script öffnet zwei PowerShell-Fenster und startet das Backend sowie das Fro
 
 ## Funktionen der Demo
 
-- Einfache Turnierkonfiguration per Formular
-- Start des Turniers mit Statusanzeige
-- Abruf aktueller Blindstufe, verbleibende Zeit und Spielerzahl
-- Grundlegendes Backend mit REST-API und In-Memory-Status
+- Mehrstufige Registrierungsphase mit gruppierten Eingaben
+- Rebuy-Regeln inkl. Reentry Price und Reentry Stack
+- Blindstruktur-Editor mit Standardstufen 25/50, 50/100, 100/200, 200/400
+- Persistenz der Registrierungsvorlage in PostgreSQL
+- JSON-Import und JSON-Export für Turniervorlagen
+- Button "Turnier anlegen" zur Übergabe in die Vorbereitungsphase (Tischverteilung)
+- Start des Turniers mit Statusanzeige (Blindstufe, Zeit, Teilnehmer)
