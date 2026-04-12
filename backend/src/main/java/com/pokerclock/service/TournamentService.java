@@ -2,58 +2,82 @@ package com.pokerclock.service;
 
 import com.pokerclock.api.TournamentSetupRequest;
 import com.pokerclock.api.TournamentStatusResponse;
+import com.pokerclock.model.Tournament;
+import com.pokerclock.repository.TournamentRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Optional;
 
 @Service
 public class TournamentService {
 
-    private final AtomicBoolean running = new AtomicBoolean(false);
-    private TournamentSetupRequest currentSetup;
-    private Instant stageStartedAt;
+    private final TournamentRepository repository;
+    private Long currentTournamentId;
+
+    public TournamentService(TournamentRepository repository) {
+        this.repository = repository;
+    }
 
     public void setupTournament(TournamentSetupRequest request) {
-        currentSetup = request;
-        running.set(false);
-        stageStartedAt = Instant.now();
+        Tournament tournament = new Tournament();
+        tournament.setTournamentName(request.getTournamentName());
+        tournament.setParticipants(request.getParticipants());
+        tournament.setTableCount(request.getTableCount());
+        tournament.setSeatsPerTable(request.getSeatsPerTable());
+        tournament.setStartingChips(request.getStartingChips());
+        tournament.setBlindStructure(request.getBlindStructure());
+        tournament.setBlindDurationSeconds(request.getBlindDurationSeconds());
+        tournament.setRebuyAllowed(request.isRebuyAllowed());
+        tournament.setCreatedAt(Instant.now());
+        tournament.setRunning(false);
+
+        Tournament saved = repository.save(tournament);
+        currentTournamentId = saved.getId();
     }
 
     public void startTournament() {
-        if (currentSetup == null) {
-            throw new IllegalStateException("Turnier muss zuerst konfiguriert werden.");
-        }
-        running.set(true);
-        stageStartedAt = Instant.now();
+        Tournament tournament = getCurrentTournament().orElseThrow(() ->
+                new IllegalStateException("Turnier muss zuerst konfiguriert werden."));
+
+        tournament.setRunning(true);
+        tournament.setStartedAt(Instant.now());
+        repository.save(tournament);
     }
 
     public TournamentStatusResponse getStatus() {
-        if (currentSetup == null) {
+        Optional<Tournament> maybeTournament = getCurrentTournament();
+        if (maybeTournament.isEmpty()) {
             return TournamentStatusResponse.builder()
                     .message("Kein Turnier konfiguriert")
                     .build();
         }
 
+        Tournament tournament = maybeTournament.get();
         long elapsedSeconds = 0;
-        if (running.get() && stageStartedAt != null) {
-            elapsedSeconds = ChronoUnit.SECONDS.between(stageStartedAt, Instant.now());
+        if (tournament.isRunning() && tournament.getStartedAt() != null) {
+            elapsedSeconds = ChronoUnit.SECONDS.between(tournament.getStartedAt(), Instant.now());
         }
 
-        long remainingSeconds = Math.max(0, currentSetup.getBlindDurationSeconds() - elapsedSeconds);
-        String currentBlind = currentSetup.getBlindStructure();
-        String nextPhase = currentSetup.isRebuyAllowed() ? "Rebuys möglich" : "Keine Rebuys";
+        long remainingSeconds = Math.max(0, tournament.getBlindDurationSeconds() - elapsedSeconds);
+        String nextPhase = tournament.isRebuyAllowed() ? "Rebuys möglich" : "Keine Rebuys";
 
         return TournamentStatusResponse.builder()
-                .tournamentName(currentSetup.getTournamentName())
-                .currentBlind(currentBlind)
+                .tournamentName(tournament.getTournamentName())
+                .currentBlind(tournament.getBlindStructure())
                 .remainingSeconds(remainingSeconds)
                 .nextPhase(nextPhase)
-                .activePlayers(currentSetup.getParticipants().size())
-                .running(running.get())
-                .message(running.get() ? "Turnier läuft" : "Turnier bereit"
-                )
+                .activePlayers(tournament.getParticipants().size())
+                .running(tournament.isRunning())
+                .message(tournament.isRunning() ? "Turnier läuft" : "Turnier bereit")
                 .build();
+    }
+
+    private Optional<Tournament> getCurrentTournament() {
+        if (currentTournamentId != null) {
+            return repository.findById(currentTournamentId);
+        }
+        return repository.findTopByOrderByCreatedAtDesc();
     }
 }

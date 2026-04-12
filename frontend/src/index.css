@@ -104,3 +104,25 @@ button:hover {
   border: 1px solid #374151;
   border-radius: 12px;
 }
+
+.distribution-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.distribution-table {
+  background: #0f172a;
+  border: 1px solid #374151;
+  border-radius: 14px;
+  padding: 18px;
+}
+
+.distribution-table h3 {
+  margin-top: 0;
+}
+
+.distribution-table ol {
+  margin: 12px 0 0;
+  padding-left: 20px;
+}

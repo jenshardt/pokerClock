@@ -1,5 +1,7 @@
 D:\Dev\localRepo\PokerClock\backend\src\main\java\com\pokerclock\api\TournamentSetupRequest.java
 D:\Dev\localRepo\PokerClock\backend\src\main\java\com\pokerclock\api\TournamentStatusResponse.java
 D:\Dev\localRepo\PokerClock\backend\src\main\java\com\pokerclock\controller\TournamentController.java
+D:\Dev\localRepo\PokerClock\backend\src\main\java\com\pokerclock\model\Tournament.java
 D:\Dev\localRepo\PokerClock\backend\src\main\java\com\pokerclock\PokerClockApplication.java
+D:\Dev\localRepo\PokerClock\backend\src\main\java\com\pokerclock\repository\TournamentRepository.java
 D:\Dev\localRepo\PokerClock\backend\src\main\java\com\pokerclock\service\TournamentService.java

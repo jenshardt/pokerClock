@@ -1,6 +1,6 @@
 # PokerClock Webanwendung
 
-Dies ist ein Startprojekt für eine `Spring Boot` + `React` Webanwendung zur Organisation und Steuerung eines Pokerturniers.
+Dies ist eine auf `Spring Boot` + `React` basierende Webanwendung zur Organisation und Steuerung eines Pokerturniers
 
 ## Struktur
 
@@ -29,6 +29,15 @@ Dies ist ein Startprojekt für eine `Spring Boot` + `React` Webanwendung zur Org
    ```
 3. Frontend ist erreichbar unter `http://localhost:5173` (oder dem in der Konsole angezeigten Port)
 
+### Backend und Frontend zusammen starten
+
+Im Projektstamm kannst du das vorbereitete Startscript ausführen:
+
+- PowerShell: `./start-all.ps1`
+- Windows-Batch: `start-all.bat`
+
+Das Script öffnet zwei PowerShell-Fenster und startet das Backend sowie das Frontend automatisch.
+
 ## Start mit Docker
 
 1. Stelle sicher, dass Docker Desktop läuft
@@ -36,7 +45,20 @@ Dies ist ein Startprojekt für eine `Spring Boot` + `React` Webanwendung zur Org
    ```bash
    docker compose up --build
    ```
-3. Öffne die Webseite unter `http://localhost:3000`
+3. Stoppe den Stack mit:
+   ```bash
+   docker compose down
+   ```
+4. Erreichbare URLs:
+   - Frontend: `http://localhost:3000`
+   - Backend-API: `http://localhost:8080/api/status`
+   - Healthcheck: `http://localhost:8080/actuator/health`
+
+### Persistenz und Healthcheck
+
+- Das Backend nutzt jetzt PostgreSQL als persistente Datenbank.
+- Der Datenbank-Service heißt `db` und speichert Daten im Volume `db_data`.
+- Healthchecks sind aktiviert: `http://localhost:8080/actuator/health`
 
 ## Funktionen der Demo
 
