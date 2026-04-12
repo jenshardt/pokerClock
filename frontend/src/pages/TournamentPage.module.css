@@ -1,0 +1,12 @@
+.statusGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+}
+
+.statusGrid div {
+  border: 1px solid rgba(70, 106, 87, 0.9);
+  border-radius: 12px;
+  background: rgba(8, 38, 25, 0.78);
+  padding: 12px;
+}

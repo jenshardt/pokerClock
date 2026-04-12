@@ -26,6 +26,7 @@ public class RegistrationTemplate {
     private Integer reentryStack;
     private int tableCount;
     private int seatsPerTable;
+    private boolean hasNeutralDealer;
 
     @ElementCollection
     @CollectionTable(name = "registration_participants", joinColumns = @JoinColumn(name = "template_id"))
@@ -129,6 +130,14 @@ public class RegistrationTemplate {
 
     public void setSeatsPerTable(int seatsPerTable) {
         this.seatsPerTable = seatsPerTable;
+    }
+
+    public boolean isHasNeutralDealer() {
+        return hasNeutralDealer;
+    }
+
+    public void setHasNeutralDealer(boolean hasNeutralDealer) {
+        this.hasNeutralDealer = hasNeutralDealer;
     }
 
     public List<String> getParticipants() {

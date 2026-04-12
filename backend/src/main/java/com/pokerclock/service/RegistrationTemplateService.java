@@ -88,6 +88,7 @@ public class RegistrationTemplateService {
         entity.setReentryStack(request.getReentryStack());
         entity.setTableCount(request.getTableCount());
         entity.setSeatsPerTable(request.getSeatsPerTable());
+        entity.setHasNeutralDealer(request.isHasNeutralDealer());
         entity.setParticipants(new ArrayList<>(request.getParticipants()));
 
         List<RegistrationBlindLevel> levels = request.getBlindLevels().stream().map(level -> {
@@ -117,6 +118,7 @@ public class RegistrationTemplateService {
         response.setReentryStack(entity.getReentryStack());
         response.setTableCount(entity.getTableCount());
         response.setSeatsPerTable(entity.getSeatsPerTable());
+        response.setHasNeutralDealer(entity.isHasNeutralDealer());
         response.setParticipants(new ArrayList<>(entity.getParticipants()));
         response.setBlindLevels(entity.getBlindLevels().stream().map(level -> {
             BlindLevelRequest dto = new BlindLevelRequest();

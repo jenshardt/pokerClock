@@ -19,6 +19,7 @@ public class RegistrationTemplateResponse {
     private Integer reentryStack;
     private int tableCount;
     private int seatsPerTable;
+    private boolean hasNeutralDealer;
     private List<String> participants = new ArrayList<>();
     private List<BlindLevelRequest> blindLevels = new ArrayList<>();
     private Instant updatedAt;
@@ -117,6 +118,14 @@ public class RegistrationTemplateResponse {
 
     public void setSeatsPerTable(int seatsPerTable) {
         this.seatsPerTable = seatsPerTable;
+    }
+
+    public boolean isHasNeutralDealer() {
+        return hasNeutralDealer;
+    }
+
+    public void setHasNeutralDealer(boolean hasNeutralDealer) {
+        this.hasNeutralDealer = hasNeutralDealer;
     }
 
     public List<String> getParticipants() {

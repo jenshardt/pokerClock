@@ -100,25 +100,6 @@ p {
   font-size: 13px;
 }
 
-.group-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
-  gap: 14px;
-  margin-bottom: 14px;
-}
-
-.group-card {
-  margin-bottom: 14px;
-  padding: 16px;
-  border-radius: 14px;
-  border: 1px solid rgba(70, 106, 87, 0.9);
-  background: rgba(8, 38, 25, 0.7);
-}
-
-.group-card:last-child {
-  margin-bottom: 0;
-}
-
 label {
   display: block;
   margin-bottom: 12px;
@@ -140,18 +121,6 @@ select {
 
 textarea {
   resize: vertical;
-}
-
-.inline-grid {
-  display: grid;
-  gap: 10px;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-}
-
-.hint {
-  margin: 4px 0 0;
-  color: #c7ccb9;
-  font-size: 13px;
 }
 
 .quick-picks,
@@ -192,96 +161,6 @@ button {
   color: #ffe8e8;
 }
 
-.toggle-line,
-.radio-line {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.toggle-line input,
-.radio-line input {
-  width: auto;
-  margin-top: 0;
-}
-
-.rebuy-panel {
-  margin-top: 8px;
-  padding: 12px;
-  border: 1px solid rgba(70, 106, 87, 0.9);
-  border-radius: 10px;
-  background: rgba(4, 20, 13, 0.75);
-}
-
-.split-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.blind-table-wrap {
-  overflow-x: auto;
-}
-
-.blind-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.blind-table th,
-.blind-table td {
-  border-bottom: 1px solid rgba(132, 107, 52, 0.4);
-  padding: 8px 6px;
-  text-align: left;
-}
-
-.blind-table input {
-  min-width: 85px;
-}
-
-.distribution-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 12px;
-}
-
-.distribution-card {
-  border: 1px solid rgba(70, 106, 87, 0.9);
-  border-radius: 12px;
-  background: rgba(8, 38, 25, 0.78);
-  padding: 14px;
-}
-
-.distribution-card ul {
-  margin: 0;
-  padding-left: 18px;
-}
-
-.roles {
-  margin-top: 12px;
-  padding-top: 8px;
-  border-top: 1px solid rgba(132, 107, 52, 0.4);
-}
-
-.roles p {
-  margin-bottom: 6px;
-}
-
-.status-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 10px;
-}
-
-.status-grid div {
-  border: 1px solid rgba(70, 106, 87, 0.9);
-  border-radius: 12px;
-  background: rgba(8, 38, 25, 0.78);
-  padding: 12px;
-}
-
 @media (max-width: 760px) {
   .hero {
     flex-direction: column;
@@ -297,3 +176,4 @@ button {
     width: 100%;
   }
 }
+
