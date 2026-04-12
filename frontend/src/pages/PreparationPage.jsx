@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import styles from './PreparationPage.module.css';
 
 function getSeatLayout(table) {
@@ -61,6 +62,20 @@ export default function PreparationPage({
   setStep,
   startTournament,
 }) {
+  const seatLayouts = useMemo(
+    () => distribution.map((table) => getSeatLayout(table)),
+    [distribution]
+  );
+
+  const seatStartOffsets = useMemo(() => {
+    let runningCount = 0;
+    return seatLayouts.map((layout) => {
+      const start = runningCount;
+      runningCount += layout.length;
+      return start;
+    });
+  }, [seatLayouts]);
+
   return (
     <section className="screen card">
       <div className="section-head">
@@ -69,7 +84,7 @@ export default function PreparationPage({
       </div>
 
       <div className={styles.distributionGrid}>
-        {distribution.map((table) => (
+        {distribution.map((table, tableIndex) => (
           <article key={table.tableName} className={styles.distributionCard}>
             <h3>{table.tableName}</h3>
             <div
@@ -84,13 +99,13 @@ export default function PreparationPage({
                 }
               }}
             >
-              <div className={styles.pokerTableHorizontal} />
-              <div className={styles.cardStack} aria-hidden="true">
+              <div className={`${styles.pokerTableHorizontal} ${styles.tableEnter}`} />
+              <div className={`${styles.cardStack} ${styles.tableEnter}`} aria-hidden="true">
                 <span className={`${styles.playCard} ${styles.cardA}`} />
                 <span className={`${styles.playCard} ${styles.cardB}`} />
                 <span className={`${styles.playCard} ${styles.cardC}`} />
               </div>
-              {getSeatLayout(table).map((seat, index) => {
+              {seatLayouts[tableIndex].map((seat, index) => {
                 const x = seat.x;
                 const y = seat.y;
                 const isDealerSeat = seat.isNeutralDealer || (!table.neutralDealer && seat.player === table.dealer);
@@ -98,29 +113,32 @@ export default function PreparationPage({
                 const isBigBlindSeat = !seat.isNeutralDealer && seat.player === table.bigBlind;
                 const hasRoleMarker = isDealerSeat || isSmallBlindSeat || isBigBlindSeat;
                 const markerPosition = getMarkerPosition(seat.angle);
+                const globalSeatIndex = seatStartOffsets[tableIndex] + index;
+                const seatDelayMs = 240 + (globalSeatIndex * 3000);
+                const markerDelayMs = seatDelayMs + 1700;
 
                 return (
                   <div key={`${table.tableName}-${seat.player}-${index}`}>
                     {isDealerSeat && (
                       <span
-                        className={`${styles.tableMarker} ${styles.markerDealer}`}
-                        style={{ left: `${markerPosition.x}%`, top: `${markerPosition.y}%` }}
+                        className={`${styles.tableMarker} ${styles.markerDealer} ${styles.markerPop}`}
+                        style={{ left: `${markerPosition.x}%`, top: `${markerPosition.y}%`, animationDelay: `${markerDelayMs}ms` }}
                       >
                         Dealer
                       </span>
                     )}
                     {isSmallBlindSeat && (
                       <span
-                        className={`${styles.tableMarker} ${styles.markerSb}`}
-                        style={{ left: `${markerPosition.x}%`, top: `${markerPosition.y}%` }}
+                        className={`${styles.tableMarker} ${styles.markerSb} ${styles.markerPop}`}
+                        style={{ left: `${markerPosition.x}%`, top: `${markerPosition.y}%`, animationDelay: `${markerDelayMs}ms` }}
                       >
                         Small Blind
                       </span>
                     )}
                     {isBigBlindSeat && (
                       <span
-                        className={`${styles.tableMarker} ${styles.markerBb}`}
-                        style={{ left: `${markerPosition.x}%`, top: `${markerPosition.y}%` }}
+                        className={`${styles.tableMarker} ${styles.markerBb} ${styles.markerPop}`}
+                        style={{ left: `${markerPosition.x}%`, top: `${markerPosition.y}%`, animationDelay: `${markerDelayMs}ms` }}
                       >
                         Big Blind
                       </span>
@@ -130,9 +148,18 @@ export default function PreparationPage({
                         styles.seatPill,
                         hasRoleMarker && styles.markedSeat,
                         isDealerSeat && styles.dealerSeat,
+                        isSmallBlindSeat && styles.sbSeat,
+                        isBigBlindSeat && styles.bbSeat,
                         seat.isNeutralDealer && styles.neutralSeat,
+                        styles.seatEnter,
                       ].filter(Boolean).join(' ')}
-                      style={{ left: `${x}%`, top: `${y}%` }}
+                      style={{
+                        left: `${x}%`,
+                        top: `${y}%`,
+                        animationDelay: `${seatDelayMs}ms`,
+                        '--from-x': `${50 - x}`,
+                        '--from-y': `${50 - y}`,
+                      }}
                     >
                       <span className={styles.seatName}>{seat.player}</span>
                     </div>
