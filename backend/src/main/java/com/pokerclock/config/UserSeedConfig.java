@@ -10,6 +10,6 @@ public class UserSeedConfig {
 
     @Bean
     public CommandLineRunner seedDefaultUser(AuthService authService) {
-        return args -> authService.ensureSeedUser("Jens", "allInCologne", "ADMIN");
+        return args -> authService.ensureSeedUser("Jens", "abcd", "ADMIN"); // TODO: Remove password if public deployed
     }
 }

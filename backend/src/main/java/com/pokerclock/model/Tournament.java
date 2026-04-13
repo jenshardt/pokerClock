@@ -20,14 +20,25 @@ public class Tournament {
     private String blindStructure;
     private int blindDurationSeconds;
     private boolean rebuyAllowed;
+    private String status;
+    private int entries;
+    private int playersLeft;
+    private int rebuys;
+    private long accumulatedElapsedSeconds;
     private Instant createdAt;
     private Instant startedAt;
+    private Instant resumedAt;
     private boolean running;
 
     @ElementCollection
     @CollectionTable(name = "tournament_participants", joinColumns = @JoinColumn(name = "tournament_id"))
     @Column(name = "participant")
     private List<String> participants = new ArrayList<>();
+
+    @ElementCollection
+    @CollectionTable(name = "tournament_eliminated_players", joinColumns = @JoinColumn(name = "tournament_id"))
+    @Column(name = "player_name")
+    private List<String> eliminatedPlayers = new ArrayList<>();
 
     public Tournament() {
     }
@@ -92,6 +103,46 @@ public class Tournament {
         this.rebuyAllowed = rebuyAllowed;
     }
 
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public int getEntries() {
+        return entries;
+    }
+
+    public void setEntries(int entries) {
+        this.entries = entries;
+    }
+
+    public int getPlayersLeft() {
+        return playersLeft;
+    }
+
+    public void setPlayersLeft(int playersLeft) {
+        this.playersLeft = playersLeft;
+    }
+
+    public int getRebuys() {
+        return rebuys;
+    }
+
+    public void setRebuys(int rebuys) {
+        this.rebuys = rebuys;
+    }
+
+    public long getAccumulatedElapsedSeconds() {
+        return accumulatedElapsedSeconds;
+    }
+
+    public void setAccumulatedElapsedSeconds(long accumulatedElapsedSeconds) {
+        this.accumulatedElapsedSeconds = accumulatedElapsedSeconds;
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }
@@ -108,6 +159,14 @@ public class Tournament {
         this.startedAt = startedAt;
     }
 
+    public Instant getResumedAt() {
+        return resumedAt;
+    }
+
+    public void setResumedAt(Instant resumedAt) {
+        this.resumedAt = resumedAt;
+    }
+
     public boolean isRunning() {
         return running;
     }
@@ -122,5 +181,13 @@ public class Tournament {
 
     public void setParticipants(List<String> participants) {
         this.participants = participants;
+    }
+
+    public List<String> getEliminatedPlayers() {
+        return eliminatedPlayers;
+    }
+
+    public void setEliminatedPlayers(List<String> eliminatedPlayers) {
+        this.eliminatedPlayers = eliminatedPlayers;
     }
 }

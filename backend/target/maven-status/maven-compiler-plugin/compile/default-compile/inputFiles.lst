@@ -3,11 +3,13 @@ D:\Dev\localRepo\PokerClock\backend\src\main\java\com\pokerclock\api\CreateTourn
 D:\Dev\localRepo\PokerClock\backend\src\main\java\com\pokerclock\api\CurrentUserResponse.java
 D:\Dev\localRepo\PokerClock\backend\src\main\java\com\pokerclock\api\LoginRequest.java
 D:\Dev\localRepo\PokerClock\backend\src\main\java\com\pokerclock\api\LoginResponse.java
+D:\Dev\localRepo\PokerClock\backend\src\main\java\com\pokerclock\api\PlayerActionRequest.java
 D:\Dev\localRepo\PokerClock\backend\src\main\java\com\pokerclock\api\RegistrationTemplateRequest.java
 D:\Dev\localRepo\PokerClock\backend\src\main\java\com\pokerclock\api\RegistrationTemplateResponse.java
 D:\Dev\localRepo\PokerClock\backend\src\main\java\com\pokerclock\api\TournamentSetupRequest.java
 D:\Dev\localRepo\PokerClock\backend\src\main\java\com\pokerclock\api\TournamentStatusResponse.java
 D:\Dev\localRepo\PokerClock\backend\src\main\java\com\pokerclock\config\AuthInterceptor.java
+D:\Dev\localRepo\PokerClock\backend\src\main\java\com\pokerclock\config\SchemaPatchConfig.java
 D:\Dev\localRepo\PokerClock\backend\src\main\java\com\pokerclock\config\SecurityBeansConfig.java
 D:\Dev\localRepo\PokerClock\backend\src\main\java\com\pokerclock\config\UserSeedConfig.java
 D:\Dev\localRepo\PokerClock\backend\src\main\java\com\pokerclock\config\WebConfig.java

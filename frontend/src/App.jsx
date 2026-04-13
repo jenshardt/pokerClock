@@ -20,6 +20,7 @@ function App() {
   const [authChecked, setAuthChecked] = useState(false);
   const [authBusy, setAuthBusy] = useState(false);
   const [soundBusy, setSoundBusy] = useState(false);
+  const [tournamentActionBusy, setTournamentActionBusy] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [currentSoundLabel, setCurrentSoundLabel] = useState('Kein Sound aktiv');
@@ -231,6 +232,20 @@ function App() {
     fetchStatus();
   }, [currentUser]);
 
+  useEffect(() => {
+    if (!currentUser || step !== 'tournament') {
+      return undefined;
+    }
+
+    const timerId = window.setInterval(() => {
+      fetchStatus();
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timerId);
+    };
+  }, [currentUser, step]);
+
   const fetchStatus = async () => {
     try {
       const response = await apiFetch('/api/status');
@@ -240,7 +255,7 @@ function App() {
       const json = await response.json();
       setStatus(json);
 
-      if (!json?.running || !json?.currentBlind) {
+      if (!json?.running || !json?.currentBlind || !String(json.currentBlind).includes('/')) {
         return;
       }
 
@@ -538,7 +553,7 @@ function App() {
       setDistribution(seating);
       setStep('preparation');
       setActiveTablePopup(null);
-      setMessage('Tischverteilung durchgeführt - bitte die Plätze einnehmen');
+      setMessage('');
       fetchStatus();
     } catch (error) {
       if (error.message !== 'UNAUTHORIZED') {
@@ -623,7 +638,7 @@ function App() {
       await sound.playFanfare();
 
       setStep('tournament');
-      setMessage('Turnier läuft.');
+      setMessage('');
       fetchStatus();
     } catch (error) {
       if (error.message !== 'UNAUTHORIZED') {
@@ -631,6 +646,41 @@ function App() {
       }
     }
   };
+
+  const runTournamentAction = async (endpoint, payload = null) => {
+    if (tournamentActionBusy) {
+      return;
+    }
+
+    setTournamentActionBusy(true);
+    try {
+      const options = payload
+        ? {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }
+        : { method: 'POST' };
+
+      const response = await apiFetch(endpoint, options);
+      if (!response.ok) {
+        return;
+      }
+      await fetchStatus();
+    } catch (error) {
+      if (error.message !== 'UNAUTHORIZED') {
+        console.error(error);
+      }
+    } finally {
+      setTournamentActionBusy(false);
+    }
+  };
+
+  const pauseTournament = async () => runTournamentAction('/api/pause');
+  const resumeTournament = async () => runTournamentAction('/api/resume');
+  const endTournament = async () => runTournamentAction('/api/end');
+  const markSeatOpen = async (playerName) => runTournamentAction('/api/seat-open', { playerName });
+  const addRebuy = async (playerName) => runTournamentAction('/api/rebuy', { playerName });
 
   const handleLogout = async () => {
     try {
@@ -719,10 +769,10 @@ function App() {
   };
 
   const heroTitle = step === 'preparation'
-    ? 'Tunier beginnt gleich'
+    ? 'Tischverteilung - bitte Plätze einnehmen'
     : step === 'tournament'
-      ? 'Turnier läuft'
-      : 'Turnier vorbereiten';
+      ? 'Turnier läuft - viel Erfolg'
+      : 'Turnier anlegen und vorbereiten';
 
   if (!authChecked) {
     return (
@@ -901,8 +951,14 @@ function App() {
       {step === 'tournament' && (
         <TournamentPage
           status={status}
+          distribution={distribution}
           setStep={setStep}
-          fetchStatus={fetchStatus}
+          pauseTournament={pauseTournament}
+          resumeTournament={resumeTournament}
+          endTournament={endTournament}
+          markSeatOpen={markSeatOpen}
+          addRebuy={addRebuy}
+          actionBusy={tournamentActionBusy}
         />
       )}
     </div>
