@@ -5,10 +5,11 @@ export const REBUY_MODES = {
 };
 
 export const DEFAULT_BLIND_LEVELS = [
-  { level: 1, smallBlind: 25, bigBlind: 50, durationMinutes: 20, breakMinutes: 0 },
-  { level: 2, smallBlind: 50, bigBlind: 100, durationMinutes: 20, breakMinutes: 0 },
-  { level: 3, smallBlind: 100, bigBlind: 200, durationMinutes: 20, breakMinutes: 0 },
-  { level: 4, smallBlind: 200, bigBlind: 400, durationMinutes: 20, breakMinutes: 10 },
+  { itemType: 'LEVEL', smallBlind: 25, bigBlind: 50, durationMinutes: 20 },
+  { itemType: 'LEVEL', smallBlind: 50, bigBlind: 100, durationMinutes: 20 },
+  { itemType: 'LEVEL', smallBlind: 100, bigBlind: 200, durationMinutes: 20 },
+  { itemType: 'LEVEL', smallBlind: 200, bigBlind: 400, durationMinutes: 20 },
+  { itemType: 'BREAK', durationMinutes: 10 },
 ];
 
 export const initialForm = {

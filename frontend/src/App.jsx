@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AUTH_TOKEN_KEY, getRandomDelayMs } from './api';
 import { DEFAULT_BLIND_LEVELS, initialForm } from './constants';
 import LoginPage from './pages/LoginPage';
 import PreparationPage from './pages/PreparationPage';
 import RegistrationPage from './pages/RegistrationPage';
+import { createSoundManager } from './sound';
 import TournamentPage from './pages/TournamentPage';
 
 function App() {
@@ -18,22 +19,96 @@ function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [authBusy, setAuthBusy] = useState(false);
+  const [soundBusy, setSoundBusy] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [currentSoundLabel, setCurrentSoundLabel] = useState('Kein Sound aktiv');
+  const [soundSettings, setSoundSettings] = useState({
+    muted: false,
+    beepVolume: 1,
+    speechEnabled: true,
+    useSampleSounds: true,
+    speechStyle: 'neutral',
+    voicePreference: 'auto',
+  });
   const [loginUsername, setLoginUsername] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [authPopup, setAuthPopup] = useState('');
   const importInputRef = useRef(null);
   const authTimeoutRef = useRef(null);
+  const soundManagerRef = useRef(null);
+  const lastBlindAnnouncementRef = useRef(null);
+  const userMenuRef = useRef(null);
 
   const participants = useMemo(
     () => form.participantsText.split(/[\n,]/).map((p) => p.trim()).filter(Boolean),
     [form.participantsText]
   );
 
+  const normalizeBlindLevels = useCallback((rawLevels) => {
+    if (!Array.isArray(rawLevels) || rawLevels.length === 0) {
+      return DEFAULT_BLIND_LEVELS.map((entry) => ({ ...entry }));
+    }
+
+    const normalized = [];
+    rawLevels.forEach((entry) => {
+      const itemType = entry?.itemType === 'BREAK' ? 'BREAK' : 'LEVEL';
+      const durationMinutes = Number(entry?.durationMinutes || 20);
+
+      if (itemType === 'BREAK') {
+        normalized.push({
+          itemType: 'BREAK',
+          durationMinutes: durationMinutes > 0 ? durationMinutes : 10,
+        });
+      } else {
+        const smallBlind = Number(entry?.smallBlind || 25);
+        const bigBlind = Number(entry?.bigBlind || Math.max(50, smallBlind * 2));
+        normalized.push({
+          itemType: 'LEVEL',
+          smallBlind,
+          bigBlind,
+          durationMinutes: durationMinutes > 0 ? durationMinutes : 20,
+        });
+
+        const legacyBreak = Number(entry?.breakMinutes || 0);
+        if (legacyBreak > 0) {
+          normalized.push({
+            itemType: 'BREAK',
+            durationMinutes: legacyBreak,
+          });
+        }
+      }
+    });
+
+    return normalized;
+  }, []);
+
   useEffect(() => () => {
     if (authTimeoutRef.current) {
       clearTimeout(authTimeoutRef.current);
     }
   }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (!soundManagerRef.current) {
+      return;
+    }
+    soundManagerRef.current.setSettings({
+      ...soundSettings,
+      onNowPlayingChange: setCurrentSoundLabel,
+    });
+  }, [soundSettings]);
 
   const clearProtectedState = () => {
     setStep('registration');
@@ -42,12 +117,35 @@ function App() {
     setMessage('');
     setSavedTemplateId(null);
     setActiveTablePopup(null);
+    setUserMenuOpen(false);
+    setSettingsOpen(false);
+    lastBlindAnnouncementRef.current = null;
+  };
+
+  const getSoundManager = () => {
+    if (!soundManagerRef.current) {
+      soundManagerRef.current = createSoundManager();
+      soundManagerRef.current.setSettings({
+        ...soundSettings,
+        onNowPlayingChange: setCurrentSoundLabel,
+      });
+    }
+    return soundManagerRef.current;
   };
 
   const clearAuthState = () => {
     localStorage.removeItem(AUTH_TOKEN_KEY);
     setAuthToken('');
     setCurrentUser(null);
+    setSoundSettings({
+      muted: false,
+      beepVolume: 1,
+      speechEnabled: true,
+      useSampleSounds: true,
+      speechStyle: 'neutral',
+      voicePreference: 'auto',
+    });
+    setCurrentSoundLabel('Kein Sound aktiv');
     clearProtectedState();
     setAuthChecked(true);
   };
@@ -141,6 +239,21 @@ function App() {
       }
       const json = await response.json();
       setStatus(json);
+
+      if (!json?.running || !json?.currentBlind) {
+        return;
+      }
+
+      if (lastBlindAnnouncementRef.current === null) {
+        lastBlindAnnouncementRef.current = json.currentBlind;
+        return;
+      }
+
+      if (lastBlindAnnouncementRef.current !== json.currentBlind) {
+        lastBlindAnnouncementRef.current = json.currentBlind;
+        const sound = getSoundManager();
+        await sound.announceBlindLevelChange(json.currentBlind);
+      }
     } catch (error) {
       if (error.message !== 'UNAUTHORIZED') {
         console.error(error);
@@ -181,9 +294,7 @@ function App() {
       seatsPerTable: template.seatsPerTable || 8,
       hasNeutralDealer: template.hasNeutralDealer ?? false,
       participantsText: participantText,
-      blindLevels: (template.blindLevels && template.blindLevels.length > 0)
-        ? template.blindLevels
-        : DEFAULT_BLIND_LEVELS,
+      blindLevels: normalizeBlindLevels(template.blindLevels),
     });
   };
 
@@ -201,15 +312,66 @@ function App() {
 
   const addBlindLevel = () => {
     setForm((prev) => {
-      const current = prev.blindLevels[prev.blindLevels.length - 1] || DEFAULT_BLIND_LEVELS[0];
+      const lastLevel = [...prev.blindLevels].reverse().find((entry) => entry.itemType !== 'BREAK') || DEFAULT_BLIND_LEVELS[0];
       const newLevel = {
-        level: prev.blindLevels.length + 1,
-        smallBlind: Number(current.smallBlind) * 2,
-        bigBlind: Number(current.bigBlind) * 2,
-        durationMinutes: Number(current.durationMinutes) || 20,
-        breakMinutes: 0,
+        itemType: 'LEVEL',
+        smallBlind: Number(lastLevel.smallBlind) * 2,
+        bigBlind: Number(lastLevel.bigBlind) * 2,
+        durationMinutes: Number(lastLevel.durationMinutes) || 20,
       };
       return { ...prev, blindLevels: [...prev.blindLevels, newLevel] };
+    });
+  };
+
+  const addBreakLevel = () => {
+    setForm((prev) => ({
+      ...prev,
+      blindLevels: [...prev.blindLevels, { itemType: 'BREAK', durationMinutes: 10 }],
+    }));
+  };
+
+  const insertBlindLevelAt = (index) => {
+    setForm((prev) => {
+      const anchor = prev.blindLevels[Math.max(0, index - 1)] || DEFAULT_BLIND_LEVELS[0];
+      const refLevel = anchor.itemType === 'LEVEL'
+        ? anchor
+        : [...prev.blindLevels.slice(0, index)].reverse().find((entry) => entry.itemType === 'LEVEL') || DEFAULT_BLIND_LEVELS[0];
+      const row = {
+        itemType: 'LEVEL',
+        smallBlind: Number(refLevel.smallBlind) * 2,
+        bigBlind: Number(refLevel.bigBlind) * 2,
+        durationMinutes: Number(refLevel.durationMinutes) || 20,
+      };
+      const next = [...prev.blindLevels];
+      next.splice(index, 0, row);
+      return { ...prev, blindLevels: next };
+    });
+  };
+
+  const insertBreakAt = (index) => {
+    setForm((prev) => {
+      const next = [...prev.blindLevels];
+      next.splice(index, 0, { itemType: 'BREAK', durationMinutes: 10 });
+      return { ...prev, blindLevels: next };
+    });
+  };
+
+  const moveBlindLevel = (fromIndex, toIndex) => {
+    setForm((prev) => {
+      if (
+        fromIndex === toIndex
+        || fromIndex < 0
+        || toIndex < 0
+        || fromIndex >= prev.blindLevels.length
+        || toIndex >= prev.blindLevels.length
+      ) {
+        return prev;
+      }
+
+      const next = [...prev.blindLevels];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return { ...prev, blindLevels: next };
     });
   };
 
@@ -218,17 +380,14 @@ function App() {
       if (prev.blindLevels.length <= 1) {
         return prev;
       }
-      const next = prev.blindLevels.filter((_, idx) => idx !== index).map((level, idx) => ({
-        ...level,
-        level: idx + 1,
-      }));
+      const next = prev.blindLevels.filter((_, idx) => idx !== index);
       return { ...prev, blindLevels: next };
     });
   };
 
   const resetBlindDefaults = () => {
-    setForm((prev) => ({ ...prev, blindLevels: DEFAULT_BLIND_LEVELS }));
-    setMessage('Standard-Blindstruktur 25/50 bis 200/400 wurde geladen.');
+    setForm((prev) => ({ ...prev, blindLevels: DEFAULT_BLIND_LEVELS.map((entry) => ({ ...entry })) }));
+    setMessage('Standardstruktur mit Blindstufen und Pause wurde geladen.');
   };
 
   const buildRequest = () => ({
@@ -247,10 +406,11 @@ function App() {
     participants,
     blindLevels: form.blindLevels.map((level, index) => ({
       level: index + 1,
-      smallBlind: Number(level.smallBlind),
-      bigBlind: Number(level.bigBlind),
+      itemType: level.itemType === 'BREAK' ? 'BREAK' : 'LEVEL',
+      smallBlind: level.itemType === 'BREAK' ? null : Number(level.smallBlind),
+      bigBlind: level.itemType === 'BREAK' ? null : Number(level.bigBlind),
       durationMinutes: Number(level.durationMinutes),
-      breakMinutes: Number(level.breakMinutes || 0),
+      breakMinutes: 0,
     })),
   });
 
@@ -264,7 +424,14 @@ function App() {
     if (participants.length < 2) {
       return 'Es werden mindestens zwei Teilnehmer benötigt.';
     }
-    if (form.blindLevels.some((level) => Number(level.smallBlind) >= Number(level.bigBlind))) {
+    const levelsOnly = form.blindLevels.filter((level) => level.itemType !== 'BREAK');
+    if (levelsOnly.length === 0) {
+      return 'Mindestens eine echte Blindstufe ist erforderlich.';
+    }
+    if (form.blindLevels.some((level) => Number(level.durationMinutes) <= 0)) {
+      return 'Jede Zeile muss eine Dauer > 0 Minuten haben.';
+    }
+    if (levelsOnly.some((level) => Number(level.smallBlind) >= Number(level.bigBlind))) {
       return 'Small Blind muss in jeder Stufe kleiner als Big Blind sein.';
     }
     return null;
@@ -451,6 +618,10 @@ function App() {
         setMessage('Turnierstart fehlgeschlagen.');
         return;
       }
+
+      const sound = getSoundManager();
+      await sound.playFanfare();
+
       setStep('tournament');
       setMessage('Turnier läuft.');
       fetchStatus();
@@ -516,6 +687,37 @@ function App() {
     }
   };
 
+  const runSoundDemo = async () => {
+    if (soundBusy) {
+      return;
+    }
+
+    setSoundBusy(true);
+    try {
+      const sound = getSoundManager();
+      await sound.runDemo();
+    } catch (error) {
+      console.error(error);
+      setMessage('Audio-Demo konnte nicht abgespielt werden.');
+    } finally {
+      setSoundBusy(false);
+    }
+  };
+
+  const handleSeatPlacementAnnouncement = useCallback(async ({ tableNumber, seatNumber, playerName, roles }) => {
+    try {
+      const sound = getSoundManager();
+      await sound.announceSeatPlacement({ tableNumber, seatNumber, playerName, roles });
+    } catch (error) {
+      console.error(error);
+    }
+  }, [soundSettings]);
+
+  const openSettings = () => {
+    setUserMenuOpen(false);
+    setSettingsOpen(true);
+  };
+
   const heroTitle = step === 'preparation'
     ? 'Tunier beginnt gleich'
     : step === 'tournament'
@@ -559,13 +761,107 @@ function App() {
         </div>
         <div className="hero-side">
           <div className="hero-chips">♠ ♥ ♦ ♣</div>
-          <div className="user-pill">
-            <strong>{currentUser.username}</strong>
-            <span>{currentUser.role}</span>
+          <div className="hero-user-menu" ref={userMenuRef}>
+            <button
+              type="button"
+              className="user-pill user-pill-button"
+              onClick={() => setUserMenuOpen((prev) => !prev)}
+            >
+              <strong>{currentUser.username}</strong>
+              <span>{currentUser.role}</span>
+            </button>
+
+            {userMenuOpen && (
+              <div className="user-menu-dropdown">
+                <button type="button" className="ghost-button" onClick={openSettings}>Settings</button>
+                <button type="button" className="ghost-button" onClick={handleLogout}>Abmelden</button>
+              </div>
+            )}
           </div>
-          <button type="button" className="ghost-button" onClick={handleLogout}>Abmelden</button>
         </div>
       </header>
+
+      {settingsOpen && (
+        <div className="settings-overlay" onClick={() => setSettingsOpen(false)}>
+          <section className="card settings-card" onClick={(event) => event.stopPropagation()}>
+            <div className="settings-head">
+              <h2>Settings</h2>
+              <p>Sound-Steuerung für die aktuelle Session von {currentUser.username}.</p>
+            </div>
+
+            <label className="settings-toggle">
+              <input
+                type="checkbox"
+                checked={soundSettings.muted}
+                onChange={(event) => setSoundSettings((prev) => ({ ...prev, muted: event.target.checked }))}
+              />
+              Alle Sounds stummschalten
+            </label>
+
+            <label>
+              Beep-Lautstärke: {Math.round(soundSettings.beepVolume * 100)}%
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={soundSettings.beepVolume}
+                onChange={(event) => setSoundSettings((prev) => ({ ...prev, beepVolume: Number(event.target.value) }))}
+              />
+            </label>
+
+            <label className="settings-toggle">
+              <input
+                type="checkbox"
+                checked={soundSettings.speechEnabled}
+                onChange={(event) => setSoundSettings((prev) => ({ ...prev, speechEnabled: event.target.checked }))}
+              />
+              Sprachansagen aktivieren
+            </label>
+
+            <label>
+              Sprechstil
+              <select
+                value={soundSettings.speechStyle}
+                onChange={(event) => setSoundSettings((prev) => ({ ...prev, speechStyle: event.target.value }))}
+              >
+                <option value="neutral">Neutral</option>
+                <option value="commentator">Kommentator</option>
+              </select>
+            </label>
+
+            <label>
+              Stimme
+              <select
+                value={soundSettings.voicePreference}
+                onChange={(event) => setSoundSettings((prev) => ({ ...prev, voicePreference: event.target.value }))}
+              >
+                <option value="auto">Automatisch (Systemstandard)</option>
+                <option value="female">Weiblich (wenn verfügbar)</option>
+                <option value="male">Männlich (wenn verfügbar)</option>
+              </select>
+            </label>
+
+            <label className="settings-toggle">
+              <input
+                type="checkbox"
+                checked={soundSettings.useSampleSounds}
+                onChange={(event) => setSoundSettings((prev) => ({ ...prev, useSampleSounds: event.target.checked }))}
+              />
+              Reale Audio-Samples bevorzugen (/sounds)
+            </label>
+            <p className="settings-note">Dateien: /sounds/beep.wav, /sounds/beep-high.wav, /sounds/fanfare.wav</p>
+            <p className="settings-now-playing"><strong>Aktuell abgespielt:</strong> {currentSoundLabel}</p>
+
+            <div className="settings-actions">
+              <button type="button" className="ghost-button" onClick={runSoundDemo} disabled={soundBusy}>
+                {soundBusy ? 'Sound-Demo läuft...' : 'Sound-Demo starten'}
+              </button>
+              <button type="button" className="primary-button" onClick={() => setSettingsOpen(false)}>Schließen</button>
+            </div>
+          </section>
+        </div>
+      )}
 
       {message && <div className="message-banner">{message}</div>}
 
@@ -575,6 +871,10 @@ function App() {
           updateForm={updateForm}
           updateBlindLevel={updateBlindLevel}
           addBlindLevel={addBlindLevel}
+          addBreakLevel={addBreakLevel}
+          insertBlindLevelAt={insertBlindLevelAt}
+          insertBreakAt={insertBreakAt}
+          moveBlindLevel={moveBlindLevel}
           removeBlindLevel={removeBlindLevel}
           resetBlindDefaults={resetBlindDefaults}
           participants={participants}
@@ -594,6 +894,7 @@ function App() {
           setActiveTablePopup={setActiveTablePopup}
           setStep={setStep}
           startTournament={startTournament}
+          onSeatPlaced={handleSeatPlacementAnnouncement}
         />
       )}
 

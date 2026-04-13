@@ -3,8 +3,9 @@ package com.pokerclock.api;
 public class BlindLevelRequest {
 
     private int level;
-    private int smallBlind;
-    private int bigBlind;
+    private String itemType;
+    private Integer smallBlind;
+    private Integer bigBlind;
     private int durationMinutes;
     private Integer breakMinutes;
 
@@ -16,19 +17,27 @@ public class BlindLevelRequest {
         this.level = level;
     }
 
-    public int getSmallBlind() {
+    public String getItemType() {
+        return itemType;
+    }
+
+    public void setItemType(String itemType) {
+        this.itemType = itemType;
+    }
+
+    public Integer getSmallBlind() {
         return smallBlind;
     }
 
-    public void setSmallBlind(int smallBlind) {
+    public void setSmallBlind(Integer smallBlind) {
         this.smallBlind = smallBlind;
     }
 
-    public int getBigBlind() {
+    public Integer getBigBlind() {
         return bigBlind;
     }
 
-    public void setBigBlind(int bigBlind) {
+    public void setBigBlind(Integer bigBlind) {
         this.bigBlind = bigBlind;
     }
 

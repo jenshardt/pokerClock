@@ -10,6 +10,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 @Service
@@ -62,7 +63,13 @@ public class RegistrationTemplateService {
         request.setRebuyAllowed(template.isRebuyEnabled());
 
         String blindStructure = template.getBlindLevels().stream()
-                .map(level -> level.getSmallBlind() + "/" + level.getBigBlind())
+            .map(level -> {
+                String itemType = normalizeItemType(level.getItemType());
+                if ("BREAK".equals(itemType)) {
+                return "B:" + level.getDurationMinutes();
+                }
+                return "L:" + level.getSmallBlind() + "/" + level.getBigBlind() + ":" + level.getDurationMinutes();
+            })
                 .collect(Collectors.joining(","));
         request.setBlindStructure(blindStructure);
 
@@ -94,8 +101,10 @@ public class RegistrationTemplateService {
         List<RegistrationBlindLevel> levels = request.getBlindLevels().stream().map(level -> {
             RegistrationBlindLevel entityLevel = new RegistrationBlindLevel();
             entityLevel.setLevelOrder(level.getLevel());
-            entityLevel.setSmallBlind(level.getSmallBlind());
-            entityLevel.setBigBlind(level.getBigBlind());
+            String itemType = normalizeItemType(level.getItemType());
+            entityLevel.setItemType(itemType);
+            entityLevel.setSmallBlind("BREAK".equals(itemType) ? null : level.getSmallBlind());
+            entityLevel.setBigBlind("BREAK".equals(itemType) ? null : level.getBigBlind());
             entityLevel.setDurationMinutes(level.getDurationMinutes());
             entityLevel.setBreakMinutes(level.getBreakMinutes());
             return entityLevel;
@@ -123,6 +132,7 @@ public class RegistrationTemplateService {
         response.setBlindLevels(entity.getBlindLevels().stream().map(level -> {
             BlindLevelRequest dto = new BlindLevelRequest();
             dto.setLevel(level.getLevelOrder());
+            dto.setItemType(normalizeItemType(level.getItemType()));
             dto.setSmallBlind(level.getSmallBlind());
             dto.setBigBlind(level.getBigBlind());
             dto.setDurationMinutes(level.getDurationMinutes());
@@ -140,5 +150,12 @@ public class RegistrationTemplateService {
         if (request.getBlindLevels() == null || request.getBlindLevels().isEmpty()) {
             throw new IllegalArgumentException("Mindestens eine Blindstufe ist erforderlich.");
         }
+    }
+
+    private String normalizeItemType(String value) {
+        if (value == null) {
+            return "LEVEL";
+        }
+        return "BREAK".equals(value.toUpperCase(Locale.ROOT)) ? "BREAK" : "LEVEL";
     }
 }

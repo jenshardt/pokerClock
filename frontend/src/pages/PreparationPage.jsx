@@ -1,5 +1,7 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import styles from './PreparationPage.module.css';
+
+const SEAT_SEQUENCE_INTERVAL_MS = 5000;
 
 function getSeatLayout(table) {
   if (table.neutralDealer) {
@@ -61,6 +63,7 @@ export default function PreparationPage({
   setActiveTablePopup,
   setStep,
   startTournament,
+  onSeatPlaced,
 }) {
   const seatLayouts = useMemo(
     () => distribution.map((table) => getSeatLayout(table)),
@@ -75,6 +78,53 @@ export default function PreparationPage({
       return start;
     });
   }, [seatLayouts]);
+
+  useEffect(() => {
+    if (typeof onSeatPlaced !== 'function') {
+      return undefined;
+    }
+
+    const timers = [];
+    distribution.forEach((table, tableIndex) => {
+      seatLayouts[tableIndex].forEach((seat, seatIndex) => {
+        if (seat.isNeutralDealer) {
+          return;
+        }
+
+        const isDealerSeat = !table.neutralDealer && seat.player === table.dealer;
+        const isSmallBlindSeat = seat.player === table.smallBlind;
+        const isBigBlindSeat = seat.player === table.bigBlind;
+        const globalSeatIndex = seatStartOffsets[tableIndex] + seatIndex;
+        const seatDelayMs = 240 + (globalSeatIndex * SEAT_SEQUENCE_INTERVAL_MS);
+
+        const roles = [];
+        if (isDealerSeat) {
+          roles.push('dealer');
+        }
+        if (isSmallBlindSeat) {
+          roles.push('small-blind');
+        }
+        if (isBigBlindSeat) {
+          roles.push('big-blind');
+        }
+
+        const timerId = window.setTimeout(() => {
+          onSeatPlaced({
+            tableNumber: tableIndex + 1,
+            seatNumber: seatIndex + 1,
+            playerName: seat.player,
+            roles,
+          });
+        }, seatDelayMs);
+
+        timers.push(timerId);
+      });
+    });
+
+    return () => {
+      timers.forEach((timerId) => window.clearTimeout(timerId));
+    };
+  }, [distribution, onSeatPlaced, seatLayouts, seatStartOffsets]);
 
   return (
     <section className="screen card">
@@ -114,7 +164,7 @@ export default function PreparationPage({
                 const hasRoleMarker = isDealerSeat || isSmallBlindSeat || isBigBlindSeat;
                 const markerPosition = getMarkerPosition(seat.angle);
                 const globalSeatIndex = seatStartOffsets[tableIndex] + index;
-                const seatDelayMs = 240 + (globalSeatIndex * 3000);
+                const seatDelayMs = 240 + (globalSeatIndex * SEAT_SEQUENCE_INTERVAL_MS);
                 const markerDelayMs = seatDelayMs + 1700;
 
                 return (

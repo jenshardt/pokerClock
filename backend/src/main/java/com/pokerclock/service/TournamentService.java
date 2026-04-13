@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.List;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 
@@ -61,13 +62,16 @@ public class TournamentService {
             elapsedSeconds = ChronoUnit.SECONDS.between(tournament.getStartedAt(), Instant.now());
         }
 
-        long remainingSeconds = Math.max(0, tournament.getBlindDurationSeconds() - elapsedSeconds);
-        String nextPhase = tournament.isRebuyAllowed() ? "Rebuys möglich" : "Keine Rebuys";
+        List<ScheduleItem> schedule = parseSchedule(tournament.getBlindStructure());
+        ScheduleState state = resolveScheduleState(schedule, elapsedSeconds, tournament.getBlindDurationSeconds());
+        String nextPhase = state.isBreak
+            ? "Pause"
+            : (tournament.isRebuyAllowed() ? "Rebuys möglich" : "Keine Rebuys");
 
         return TournamentStatusResponse.builder()
                 .tournamentName(tournament.getTournamentName())
-                .currentBlind(tournament.getBlindStructure())
-                .remainingSeconds(remainingSeconds)
+            .currentBlind(state.label)
+            .remainingSeconds(state.remainingSeconds)
                 .nextPhase(nextPhase)
                 .activePlayers(tournament.getParticipants().size())
                 .running(tournament.isRunning())
@@ -80,5 +84,94 @@ public class TournamentService {
             return repository.findById(currentTournamentId);
         }
         return repository.findTopByOrderByCreatedAtDesc();
+    }
+
+    private List<ScheduleItem> parseSchedule(String blindStructure) {
+        List<ScheduleItem> items = new ArrayList<>();
+        if (blindStructure == null || blindStructure.isBlank()) {
+            return items;
+        }
+
+        String[] tokens = blindStructure.split(",");
+        for (String rawToken : tokens) {
+            String token = rawToken.trim();
+            if (token.startsWith("L:")) {
+                String[] parts = token.split(":");
+                if (parts.length < 3) {
+                    continue;
+                }
+                String blind = parts[1];
+                int durationMinutes = parsePositiveInt(parts[2], 20);
+                items.add(new ScheduleItem(blind, durationMinutes * 60L, false));
+            } else if (token.startsWith("B:")) {
+                String[] parts = token.split(":");
+                if (parts.length < 2) {
+                    continue;
+                }
+                int durationMinutes = parsePositiveInt(parts[1], 10);
+                items.add(new ScheduleItem("Break", durationMinutes * 60L, true));
+            } else if (token.contains("/")) {
+                items.add(new ScheduleItem(token, Math.max(1, 20 * 60L), false));
+            }
+        }
+
+        return items;
+    }
+
+    private ScheduleState resolveScheduleState(List<ScheduleItem> schedule, long elapsedSeconds, long fallbackDurationSeconds) {
+        if (schedule.isEmpty()) {
+            long remaining = Math.max(0, fallbackDurationSeconds - elapsedSeconds);
+            return new ScheduleState("—", remaining, false);
+        }
+
+        if (elapsedSeconds <= 0) {
+            ScheduleItem first = schedule.get(0);
+            return new ScheduleState(first.label, first.durationSeconds, first.breakItem);
+        }
+
+        long consumed = 0;
+        for (ScheduleItem item : schedule) {
+            long end = consumed + item.durationSeconds;
+            if (elapsedSeconds < end) {
+                return new ScheduleState(item.label, end - elapsedSeconds, item.breakItem);
+            }
+            consumed = end;
+        }
+
+        ScheduleItem last = schedule.get(schedule.size() - 1);
+        return new ScheduleState(last.label, 0, last.breakItem);
+    }
+
+    private int parsePositiveInt(String value, int fallback) {
+        try {
+            int parsed = Integer.parseInt(value.trim());
+            return parsed > 0 ? parsed : fallback;
+        } catch (Exception ignored) {
+            return fallback;
+        }
+    }
+
+    private static class ScheduleItem {
+        private final String label;
+        private final long durationSeconds;
+        private final boolean breakItem;
+
+        private ScheduleItem(String label, long durationSeconds, boolean breakItem) {
+            this.label = label;
+            this.durationSeconds = durationSeconds;
+            this.breakItem = breakItem;
+        }
+    }
+
+    private static class ScheduleState {
+        private final String label;
+        private final long remainingSeconds;
+        private final boolean isBreak;
+
+        private ScheduleState(String label, long remainingSeconds, boolean isBreak) {
+            this.label = label;
+            this.remainingSeconds = remainingSeconds;
+            this.isBreak = isBreak;
+        }
     }
 }

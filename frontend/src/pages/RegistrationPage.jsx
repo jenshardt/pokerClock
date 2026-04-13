@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { REBUY_MODES } from '../constants';
 import styles from './RegistrationPage.module.css';
 
@@ -6,6 +7,10 @@ export default function RegistrationPage({
   updateForm,
   updateBlindLevel,
   addBlindLevel,
+  addBreakLevel,
+  insertBlindLevelAt,
+  insertBreakAt,
+  moveBlindLevel,
   removeBlindLevel,
   resetBlindDefaults,
   participants,
@@ -16,6 +21,25 @@ export default function RegistrationPage({
   triggerImport,
   importTemplate,
 }) {
+  const draggedIndexRef = useRef(null);
+
+  const handleDragStart = (index) => {
+    draggedIndexRef.current = index;
+  };
+
+  const handleDrop = (dropIndex) => {
+    const fromIndex = draggedIndexRef.current;
+    draggedIndexRef.current = null;
+    if (fromIndex === null || fromIndex === undefined || fromIndex === dropIndex) {
+      return;
+    }
+    moveBlindLevel(fromIndex, dropIndex);
+  };
+
+  const levelCounterForIndex = (rowIndex) => (
+    form.blindLevels.slice(0, rowIndex + 1).filter((entry) => entry.itemType !== 'BREAK').length
+  );
+
   return (
     <section className="screen card">
       <div className="section-head">
@@ -127,29 +151,53 @@ export default function RegistrationPage({
           <div className="button-row">
             <button type="button" className="ghost-button" onClick={resetBlindDefaults}>Standard 25/50 bis 200/400</button>
             <button type="button" className="ghost-button" onClick={addBlindLevel}>Level hinzufügen</button>
+            <button type="button" className="ghost-button" onClick={addBreakLevel}>Pause hinzufügen</button>
           </div>
         </div>
         <div className={styles.blindTableWrap}>
           <table className={styles.blindTable}>
             <thead>
               <tr>
+                <th>Move</th>
+                <th>Pos</th>
+                <th>Typ</th>
                 <th>Level</th>
                 <th>Small Blind</th>
                 <th>Big Blind</th>
                 <th>Dauer (Min)</th>
-                <th>Pause danach (Min)</th>
                 <th>Aktion</th>
               </tr>
             </thead>
             <tbody>
               {form.blindLevels.map((level, idx) => (
-                <tr key={`blind-${idx}`}>
-                  <td>{idx + 1}</td>
-                  <td><input type="number" min="1" value={level.smallBlind} onChange={(e) => updateBlindLevel(idx, 'smallBlind', e.target.value)} /></td>
-                  <td><input type="number" min="2" value={level.bigBlind} onChange={(e) => updateBlindLevel(idx, 'bigBlind', e.target.value)} /></td>
-                  <td><input type="number" min="1" value={level.durationMinutes} onChange={(e) => updateBlindLevel(idx, 'durationMinutes', e.target.value)} /></td>
-                  <td><input type="number" min="0" value={level.breakMinutes || 0} onChange={(e) => updateBlindLevel(idx, 'breakMinutes', e.target.value)} /></td>
+                <tr
+                  key={`blind-${idx}`}
+                  className={level.itemType === 'BREAK' ? styles.breakRow : ''}
+                  draggable
+                  onDragStart={() => handleDragStart(idx)}
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={() => handleDrop(idx)}
+                >
                   <td>
+                    <span className={styles.dragHandle} title="Per Drag & Drop verschieben">::</span>
+                  </td>
+                  <td>{idx + 1}</td>
+                  <td>{level.itemType === 'BREAK' ? 'Pause' : 'Blind'}</td>
+                  <td>{level.itemType === 'BREAK' ? '—' : levelCounterForIndex(idx)}</td>
+                  <td>
+                    {level.itemType === 'BREAK'
+                      ? <span className={styles.disabledCell}>—</span>
+                      : <input type="number" min="1" value={level.smallBlind} onChange={(e) => updateBlindLevel(idx, 'smallBlind', e.target.value)} />}
+                  </td>
+                  <td>
+                    {level.itemType === 'BREAK'
+                      ? <span className={styles.disabledCell}>—</span>
+                      : <input type="number" min="2" value={level.bigBlind} onChange={(e) => updateBlindLevel(idx, 'bigBlind', e.target.value)} />}
+                  </td>
+                  <td><input type="number" min="1" value={level.durationMinutes} onChange={(e) => updateBlindLevel(idx, 'durationMinutes', e.target.value)} /></td>
+                  <td className={styles.actionCell}>
+                    <button type="button" className="ghost-button" onClick={() => insertBlindLevelAt(idx + 1)}>+Level</button>
+                    <button type="button" className="ghost-button" onClick={() => insertBreakAt(idx + 1)}>+Pause</button>
                     <button type="button" className="danger-button" onClick={() => removeBlindLevel(idx)}>Entfernen</button>
                   </td>
                 </tr>
