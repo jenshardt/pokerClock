@@ -4,6 +4,8 @@
 *.war
 *.ear
 /target
+/backend/target
+**/target/
 /mvnw
 /mvnw.cmd
 /.mvn
@@ -21,3 +23,8 @@ yarn-error.log*
 
 # Misc
 *.log
+
+# Local environment secrets
+.env
+.env.*
+!.env.example

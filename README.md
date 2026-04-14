@@ -146,22 +146,40 @@ mvn clean package -DskipTests
 
 1. **Docker Desktop starten** (falls nicht bereits laufend)
 
-2. **Im Projektstamm das Docker Compose File öffnen:**
+2. **Umgebungsvariablen vorbereiten (Pflicht):**
+   ```bash
+   # macOS / Linux
+   cp .env.example .env
+   ```
+   ```powershell
+   # Windows PowerShell
+   Copy-Item .env.example .env
+   ```
+   Dann in `.env` sichere Werte setzen:
+   - `POSTGRES_PASSWORD`
+   - `DB_PASSWORD`
+
+   Optional für lokale Entwicklung (Seed-Admin):
+   - `APP_SEED_ADMIN_USERNAME`
+   - `APP_SEED_ADMIN_PASSWORD`
+   - `APP_SEED_ADMIN_ROLE` (Default: `ADMIN`)
+
+3. **Im Projektstamm das Docker Compose File starten:**
    ```bash
    # Terminal im Root-Verzeichnis (wo docker-compose.yml liegt)
    docker compose up --build
    ```
 
-3. **In der Docker Desktop UI beobachten:**
+4. **In der Docker Desktop UI beobachten:**
    - Öffne Docker Desktop App
    - Gehe zu **Containers**
    - Du siehst Logs und Status der Container (pokerclock-backend, pokerclock-frontend, db)
 
-4. **Application testen:**
+5. **Application testen:**
    - Frontend: `http://localhost:3000`
    - Backend Status: `http://localhost:8080/actuator/health`
 
-5. **Stack stoppen:**
+6. **Stack stoppen:**
    ```bash
    docker compose down
    ```
@@ -180,6 +198,80 @@ mvn clean package -DskipTests
 
 ### Logs in Docker Desktop
 - Klick auf einen Service → **Logs** Tab → Echtzeit-Ausgabe
+
+---
+
+## 🔐 Sicherheits- & Deployment-Checkliste (Pflicht vor Veröffentlichung)
+
+Diese Punkte sollten erledigt sein, bevor du die App anderen zeigst oder in ein erreichbares Umfeld deployest.
+
+### A) Für **lokales Docker Desktop** (Demo, Team-intern)
+
+1. **Lokale Secrets setzen, nie committen**
+   - `.env.example` nach `.env` kopieren.
+   - Starke Werte für `POSTGRES_PASSWORD` und `DB_PASSWORD` setzen.
+   - Sicherstellen, dass `.env` nicht versioniert ist.
+
+2. **Seed-Admin nur bei Bedarf aktivieren**
+   - Optional `APP_SEED_ADMIN_USERNAME` und `APP_SEED_ADMIN_PASSWORD` setzen.
+   - Für normale Nutzung leer lassen, damit kein Auto-Seed erfolgt.
+
+3. **Image/Code-Stand bereinigen**
+   - Keine Build-Artefakte in Git (`target/`, `dist/`).
+   - Keine temporären lokalen Dateien mit Zugangsdaten im Repo.
+
+4. **Sichtprüfung vor Freigabe**
+   - `git status` muss sauber sein.
+   - Nochmal nach harten Credentials suchen (z. B. mit `gitleaks`).
+
+### B) Für **offenes Kubernetes-Cluster** (Internet/extern erreichbar)
+
+1. **Secrets-Management erzwingen**
+   - Keine Klartext-Secrets in `Deployment`, `ConfigMap`, `values.yaml`.
+   - Secrets nur über `Secret`, Sealed Secrets, External Secrets oder Vault.
+   - Keine Default-Passwörter verwenden.
+
+2. **Produktionsfähige Authentifizierung verwenden**
+   - Aktuell ist die Session-Verwaltung in-memory und auf einfache Nutzung ausgelegt.
+   - Für offene Umgebungen stattdessen robuste Auth-Lösung einsetzen (z. B. OIDC/JWT + serverseitige Session-/Token-Strategie).
+   - Token-Lebensdauer, Logout-Invalidierung und Rotationsstrategie definieren.
+
+3. **Transport & Ingress absichern**
+   - Nur HTTPS/TLS, HTTP auf HTTPS umleiten.
+   - CORS restriktiv setzen (nur benötigte Origins).
+   - Security-Header auf Ingress/Proxy aktivieren.
+
+4. **Datenbank absichern**
+   - DB nicht öffentlich exponieren.
+   - Eigener DB-User mit minimalen Rechten.
+   - Backups, Restore-Test und Rotationsprozess für DB-Credentials definieren.
+
+5. **Container-Härtung**
+   - Images mit festen Versionen bauen, regelmäßig patchen.
+   - Container möglichst als non-root ausführen.
+   - `readOnlyRootFilesystem`, `allowPrivilegeEscalation: false`, sinnvolle `securityContext` setzen.
+
+6. **Netzwerk- und Laufzeitschutz**
+   - `NetworkPolicy` für minimale Verbindungen.
+   - Ressourcenlimits und Requests setzen.
+   - Liveness/Readiness-Probes aktiv halten.
+
+7. **Betrieb & Monitoring**
+   - Zentrales Logging und Metriken aktivieren.
+   - Alerting für Fehlerquoten, Restart-Loops, Auth-Fehler, DB-Verbindungsprobleme.
+   - Auditierbare Deployment-Pipeline verwenden.
+
+8. **Compliance vor Public Release**
+   - Git-Historie auf alte Secrets prüfen und ggf. bereinigen.
+   - Alle früher verwendeten Credentials rotieren.
+   - Optional: Secret-Scanning als CI-Gate erzwingen.
+
+### Empfohlener Minimalablauf vor Veröffentlichung
+
+1. Lokalen Stand committen und `git status` prüfen.
+2. Secret-Scan über aktuellen Stand und Historie durchführen.
+3. Betroffene Credentials rotieren.
+4. Erst danach Repository/Deployment öffentlich machen.
 
 ---
 
