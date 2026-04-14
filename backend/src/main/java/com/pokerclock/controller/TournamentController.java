@@ -1,8 +1,11 @@
 package com.pokerclock.controller;
 
 import com.pokerclock.api.PlayerActionRequest;
+import com.pokerclock.api.TournamentResultSaveRequest;
+import com.pokerclock.api.TournamentResultSaveResponse;
 import com.pokerclock.api.TournamentSetupRequest;
 import com.pokerclock.api.TournamentStatusResponse;
+import com.pokerclock.service.TournamentResultArchiveService;
 import com.pokerclock.service.TournamentService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -12,9 +15,11 @@ import org.springframework.web.bind.annotation.*;
 public class TournamentController {
 
     private final TournamentService tournamentService;
+    private final TournamentResultArchiveService resultArchiveService;
 
-    public TournamentController(TournamentService tournamentService) {
+    public TournamentController(TournamentService tournamentService, TournamentResultArchiveService resultArchiveService) {
         this.tournamentService = tournamentService;
+        this.resultArchiveService = resultArchiveService;
     }
 
     @GetMapping("/status")
@@ -50,6 +55,11 @@ public class TournamentController {
     public ResponseEntity<Void> endTournament() {
         tournamentService.endTournament();
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/results")
+    public ResponseEntity<TournamentResultSaveResponse> saveTournamentResult(@RequestBody TournamentResultSaveRequest request) {
+        return ResponseEntity.ok(resultArchiveService.saveResult(request));
     }
 
     @PostMapping("/seat-open")

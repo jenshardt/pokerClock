@@ -261,6 +261,162 @@
   box-shadow: none;
 }
 
+.endConfirmCard {
+  width: min(540px, 100%);
+}
+
+.summaryCard {
+  width: min(1040px, 100%);
+  max-height: min(92vh, 980px);
+  overflow: auto;
+}
+
+.summaryHeader {
+  margin-bottom: 12px;
+}
+
+.summaryHeader h2 {
+  margin: 0;
+}
+
+.summaryHeader p {
+  margin: 4px 0 0;
+  color: #d0d7c1;
+}
+
+.summaryStatsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.summaryStatsGrid div {
+  border: 1px solid rgba(86, 120, 102, 0.85);
+  border-radius: 10px;
+  background: rgba(8, 38, 25, 0.78);
+  padding: 10px;
+  display: grid;
+  gap: 4px;
+}
+
+.summaryStatsGrid span {
+  font-size: 13px;
+  color: #c8d4df;
+}
+
+.summaryStatsGrid strong {
+  font-size: 20px;
+}
+
+.playersLine {
+  margin: 6px 0;
+  color: #d5dbc7;
+}
+
+.payoutSection {
+  margin-top: 16px;
+  border: 1px solid rgba(86, 120, 102, 0.85);
+  border-radius: 12px;
+  background: rgba(8, 38, 25, 0.78);
+  padding: 12px;
+}
+
+.payoutSection h3 {
+  margin: 0;
+}
+
+.payoutHead {
+  margin-bottom: 10px;
+}
+
+.payoutHead p {
+  margin: 4px 0 0;
+  color: #d0d7c1;
+}
+
+.payoutControls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.payoutControls label {
+  margin-bottom: 0;
+}
+
+.payoutRowActions {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.payoutTable {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.payoutRow {
+  display: grid;
+  grid-template-columns: minmax(84px, 130px) minmax(130px, 1fr) minmax(110px, 160px) minmax(220px, 1.4fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(129, 141, 126, 0.35);
+  border-radius: 10px;
+  background: rgba(13, 28, 19, 0.92);
+}
+
+.payoutTargetLabel {
+  color: #d0d7c1;
+  font-size: 14px;
+}
+
+.payoutComputed {
+  color: #d0d7c1;
+  font-size: 13px;
+}
+
+.payoutTotals {
+  margin-top: 10px;
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.payoutValid {
+  border: 1px solid rgba(64, 202, 123, 0.7);
+  background: rgba(43, 153, 89, 0.2);
+}
+
+.payoutInvalid {
+  border: 1px solid rgba(229, 100, 100, 0.7);
+  background: rgba(171, 52, 52, 0.2);
+}
+
+.persistToggle {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.persistToggle input {
+  width: auto;
+  margin-top: 0;
+}
+
+.summaryMessage {
+  margin: 8px 0 0;
+  color: #ffd5d5;
+  font-weight: 700;
+}
+
 @media (max-width: 980px) {
   .mainGrid {
     grid-template-columns: 1fr;
@@ -304,5 +460,10 @@
 
   .nextLine {
     font-size: 17px;
+  }
+
+  .payoutRow {
+    grid-template-columns: 1fr;
+    gap: 6px;
   }
 }

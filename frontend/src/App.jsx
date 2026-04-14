@@ -649,7 +649,7 @@ function App() {
 
   const runTournamentAction = async (endpoint, payload = null) => {
     if (tournamentActionBusy) {
-      return;
+      return false;
     }
 
     setTournamentActionBusy(true);
@@ -664,13 +664,15 @@ function App() {
 
       const response = await apiFetch(endpoint, options);
       if (!response.ok) {
-        return;
+        return false;
       }
       await fetchStatus();
+      return true;
     } catch (error) {
       if (error.message !== 'UNAUTHORIZED') {
         console.error(error);
       }
+      return false;
     } finally {
       setTournamentActionBusy(false);
     }
@@ -681,6 +683,20 @@ function App() {
   const endTournament = async () => runTournamentAction('/api/end');
   const markSeatOpen = async (playerName) => runTournamentAction('/api/seat-open', { playerName });
   const addRebuy = async (playerName) => runTournamentAction('/api/rebuy', { playerName });
+
+  const saveTournamentResult = async (payload) => {
+    const response = await apiFetch('/api/results', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error('SAVE_RESULT_FAILED');
+    }
+
+    return response.json();
+  };
 
   const handleLogout = async () => {
     try {
@@ -952,12 +968,20 @@ function App() {
         <TournamentPage
           status={status}
           distribution={distribution}
+          tournamentConfig={{
+            tournamentName: form.tournamentName,
+            location: form.location,
+            buyInEuro: form.buyInEuro,
+            reentryPriceEuro: form.reentryPriceEuro,
+            participants,
+          }}
           setStep={setStep}
           pauseTournament={pauseTournament}
           resumeTournament={resumeTournament}
           endTournament={endTournament}
           markSeatOpen={markSeatOpen}
           addRebuy={addRebuy}
+          saveTournamentResult={saveTournamentResult}
           actionBusy={tournamentActionBusy}
         />
       )}

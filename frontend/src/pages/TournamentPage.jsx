@@ -28,15 +28,52 @@ function formatNumber(value) {
   return Number(value || 0).toLocaleString('de-DE');
 }
 
+function toAmount(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return 0;
+  }
+  return Math.max(0, Math.round((numeric + Number.EPSILON) * 100) / 100);
+}
+
+function formatCurrency(value) {
+  return `${toAmount(value).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR`;
+}
+
+function buildRowsFromPercentages(percentages, prizePool, withPlayers = false, players = []) {
+  return percentages.map((percentage, index) => ({
+    id: `${withPlayers ? 'deal' : 'place'}-${index + 1}`,
+    place: index + 1,
+    label: withPlayers ? `Deal ${index + 1}` : `${index + 1}. Platz`,
+    playerName: withPlayers ? (players[index] || '') : '',
+    percent: toAmount(percentage),
+    amount: toAmount((toAmount(percentage) / 100) * prizePool),
+  }));
+}
+
+function buildDynamicPercentages(count) {
+  const safeCount = Math.max(2, Number(count || 2));
+  const denominator = (safeCount * (safeCount + 1)) / 2;
+  const values = Array.from({ length: safeCount }, (_, index) => {
+    const weight = safeCount - index;
+    return toAmount((weight / denominator) * 100);
+  });
+  const delta = toAmount(100 - values.reduce((sum, value) => sum + value, 0));
+  values[values.length - 1] = toAmount(values[values.length - 1] + delta);
+  return values;
+}
+
 export default function TournamentPage({
   status,
   distribution,
+  tournamentConfig,
   setStep,
   pauseTournament,
   resumeTournament,
   endTournament,
   markSeatOpen,
   addRebuy,
+  saveTournamentResult,
   actionBusy,
 }) {
   const statusText = status?.status || 'Turnier bereit';
@@ -46,6 +83,101 @@ export default function TournamentPage({
   const heroClockText = formatClock(status?.remainingSeconds);
   const [activeTablePopup, setActiveTablePopup] = useState(null);
   const [selectedSeatAction, setSelectedSeatAction] = useState(null);
+  const [endConfirmOpen, setEndConfirmOpen] = useState(false);
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const [payoutMode, setPayoutMode] = useState('preset2');
+  const [payoutValueMode, setPayoutValueMode] = useState('percent');
+  const [dynamicPlaceCount, setDynamicPlaceCount] = useState(4);
+  const [payoutRows, setPayoutRows] = useState([]);
+  const [persistResult, setPersistResult] = useState(false);
+  const [saveBusy, setSaveBusy] = useState(false);
+  const [summaryMessage, setSummaryMessage] = useState('');
+
+  const buyInEuro = toAmount(tournamentConfig?.buyInEuro);
+  const reentryPriceEuro = toAmount(tournamentConfig?.reentryPriceEuro);
+  const prizePool = toAmount((buyInEuro * Number(status?.entries || 0)) + (reentryPriceEuro * Number(status?.rebuys || 0)));
+  const hasPrizePool = prizePool > 0;
+  const activePlayers = status?.activePlayerNames || [];
+  const eliminatedPlayersInOrder = status?.eliminatedPlayerNames || [];
+
+  const allPlayers = useMemo(() => {
+    const unique = new Set();
+    const ordered = [];
+    [...(status?.activePlayerNames || []), ...(status?.eliminatedPlayerNames || [])].forEach((name) => {
+      if (!name || unique.has(name)) {
+        return;
+      }
+      unique.add(name);
+      ordered.push(name);
+    });
+    return ordered;
+  }, [status]);
+
+  const maxPlaces = Math.max(2, allPlayers.length || Number(status?.entries || 0) || 2);
+
+  const suggestPlayersForPlaces = (count) => {
+    const safeCount = Math.max(1, Number(count || 1));
+    const suggestions = [];
+
+    if (activePlayers.length > 0) {
+      suggestions.push(activePlayers[0]);
+    }
+
+    const eliminatedReverse = [...eliminatedPlayersInOrder].reverse();
+    eliminatedReverse.forEach((name) => {
+      if (suggestions.length < safeCount) {
+        suggestions.push(name);
+      }
+    });
+
+    activePlayers.slice(1).forEach((name) => {
+      if (suggestions.length < safeCount) {
+        suggestions.push(name);
+      }
+    });
+
+    while (suggestions.length < safeCount) {
+      suggestions.push('');
+    }
+
+    return suggestions.slice(0, safeCount);
+  };
+
+  const withSuggestedPlayers = (rows) => {
+    const suggestions = suggestPlayersForPlaces(rows.length);
+    return rows.map((row, index) => ({
+      ...row,
+      playerName: suggestions[index] || '',
+    }));
+  };
+
+  const createRowsForMode = (mode, dynamicCount = dynamicPlaceCount) => {
+    if (!hasPrizePool) {
+      return [];
+    }
+
+    if (mode === 'preset2') {
+      return withSuggestedPlayers(buildRowsFromPercentages([60, 40], prizePool));
+    }
+
+    if (mode === 'preset3') {
+      return withSuggestedPlayers(buildRowsFromPercentages([50, 30, 20], prizePool));
+    }
+
+    if (mode === 'dynamic') {
+      return withSuggestedPlayers(buildRowsFromPercentages(buildDynamicPercentages(dynamicCount), prizePool));
+    }
+
+    if (mode === 'deal') {
+      const count = Math.max(2, Math.min(maxPlaces, Number(status?.playersLeft || 2)));
+      const baseSplit = Array.from({ length: count }, () => toAmount(100 / count));
+      const delta = toAmount(100 - baseSplit.reduce((sum, value) => sum + value, 0));
+      baseSplit[baseSplit.length - 1] = toAmount(baseSplit[baseSplit.length - 1] + delta);
+      return withSuggestedPlayers(buildRowsFromPercentages(baseSplit, prizePool, true, allPlayers));
+    }
+
+    return withSuggestedPlayers(buildRowsFromPercentages([100], prizePool));
+  };
 
   const seatStatuses = useMemo(() => {
     const map = {};
@@ -73,11 +205,193 @@ export default function TournamentPage({
   }, [seatStatuses, selectedSeatAction]);
 
   const handleEndClick = () => {
-    const confirmed = window.confirm('Sicher das Turnier beenden?');
-    if (!confirmed) {
+    setSummaryMessage('');
+    setEndConfirmOpen(true);
+  };
+
+  const handleConfirmEnd = async () => {
+    const success = await endTournament();
+    if (!success) {
+      setSummaryMessage('Turnier konnte nicht beendet werden. Bitte erneut versuchen.');
+      setEndConfirmOpen(false);
       return;
     }
-    endTournament();
+
+    const defaultMode = Number(status?.playersLeft || 0) >= 3 ? 'preset3' : 'preset2';
+    const defaultDynamic = Math.max(2, Math.min(maxPlaces, Number(status?.playersLeft || 4) || 4));
+
+    setPayoutMode(defaultMode);
+    setPayoutValueMode('percent');
+    setDynamicPlaceCount(defaultDynamic);
+    setPayoutRows(createRowsForMode(defaultMode, defaultDynamic));
+    setPersistResult(false);
+    setSummaryMessage('');
+    setEndConfirmOpen(false);
+    setSummaryOpen(true);
+  };
+
+  const handlePayoutModeChange = (nextMode) => {
+    setPayoutMode(nextMode);
+    setPayoutRows(createRowsForMode(nextMode));
+  };
+
+  const handleValueModeChange = (nextMode) => {
+    setPayoutValueMode(nextMode);
+    if (!hasPrizePool) {
+      return;
+    }
+
+    if (nextMode === 'amount') {
+      setPayoutRows((prev) => prev.map((row) => ({
+        ...row,
+        amount: toAmount((toAmount(row.percent) / 100) * prizePool),
+      })));
+      return;
+    }
+
+    setPayoutRows((prev) => prev.map((row) => ({
+      ...row,
+      percent: prizePool > 0 ? toAmount((toAmount(row.amount) / prizePool) * 100) : 0,
+    })));
+  };
+
+  const handlePayoutRowChange = (rowId, field, rawValue) => {
+    setPayoutRows((prev) => prev.map((row) => {
+      if (row.id !== rowId) {
+        return row;
+      }
+
+      if (field === 'playerName') {
+        return { ...row, playerName: rawValue };
+      }
+
+      const value = toAmount(rawValue);
+      if (field === 'percent') {
+        return {
+          ...row,
+          percent: value,
+          amount: toAmount((value / 100) * prizePool),
+        };
+      }
+
+      return {
+        ...row,
+        amount: value,
+        percent: prizePool > 0 ? toAmount((value / prizePool) * 100) : 0,
+      };
+    }));
+  };
+
+  const addPayoutRow = () => {
+    setPayoutRows((prev) => ([
+      ...prev,
+      {
+        id: `${payoutMode}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        place: prev.length + 1,
+        label: payoutMode === 'deal' ? `Deal ${prev.length + 1}` : `${prev.length + 1}. Platz`,
+        playerName: allPlayers.find((name) => !prev.some((row) => row.playerName === name)) || '',
+        percent: 0,
+        amount: 0,
+      },
+    ]));
+  };
+
+  const removePayoutRow = (rowId) => {
+    setPayoutRows((prev) => prev
+      .filter((row) => row.id !== rowId)
+      .map((row, index) => ({
+        ...row,
+        place: index + 1,
+        label: payoutMode === 'deal' ? `Deal ${index + 1}` : `${index + 1}. Platz`,
+      })));
+  };
+
+  const totals = useMemo(() => {
+    const percent = toAmount(payoutRows.reduce((sum, row) => sum + toAmount(row.percent), 0));
+    const amount = toAmount(payoutRows.reduce((sum, row) => sum + toAmount(row.amount), 0));
+    return { percent, amount };
+  }, [payoutRows]);
+
+  const duplicateSelectedPlayers = useMemo(() => {
+    const counts = new Map();
+    payoutRows.forEach((row) => {
+      if (!row.playerName) {
+        return;
+      }
+      counts.set(row.playerName, (counts.get(row.playerName) || 0) + 1);
+    });
+    return [...counts.entries()].filter(([, count]) => count > 1).map(([name]) => name);
+  }, [payoutRows]);
+
+  const payoutValid = useMemo(() => {
+    if (!hasPrizePool) {
+      return true;
+    }
+
+    if (!payoutRows.length) {
+      return false;
+    }
+
+    const hasEmptyPlayer = payoutRows.some((row) => !row.playerName);
+    if (hasEmptyPlayer || duplicateSelectedPlayers.length > 0) {
+      return false;
+    }
+
+    if (payoutValueMode === 'percent') {
+      return Math.abs(totals.percent - 100) <= 0.01;
+    }
+
+    return Math.abs(totals.amount - prizePool) <= 0.01;
+  }, [duplicateSelectedPlayers, hasPrizePool, payoutRows, payoutValueMode, prizePool, totals.amount, totals.percent]);
+
+  const handleBackToConfiguration = async () => {
+    setSummaryMessage('');
+
+    if (!persistResult) {
+      setSummaryOpen(false);
+      setStep('registration');
+      return;
+    }
+
+    if (!payoutValid) {
+      setSummaryMessage('Bitte Auszahlungen korrigieren (Summe 100% bzw. Gesamtbetrag, Spieler-Auswahl vollständig und ohne Duplikate).');
+      return;
+    }
+
+    setSaveBusy(true);
+    try {
+      await saveTournamentResult({
+        tournamentName: status?.tournamentName || tournamentConfig?.tournamentName || '',
+        location: tournamentConfig?.location || '',
+        entries: Number(status?.entries || 0),
+        rebuys: Number(status?.rebuys || 0),
+        playersLeft: Number(status?.playersLeft || 0),
+        elapsedSeconds: Number(status?.elapsedSeconds || 0),
+        buyInEuro: buyInEuro > 0 ? buyInEuro : null,
+        reentryPriceEuro: reentryPriceEuro > 0 ? reentryPriceEuro : null,
+        prizePoolEuro: hasPrizePool ? prizePool : null,
+        payoutMode,
+        payoutValueMode,
+        participants: tournamentConfig?.participants || [],
+        activePlayerNames: status?.activePlayerNames || [],
+        eliminatedPlayerNames: status?.eliminatedPlayerNames || [],
+        payouts: hasPrizePool
+          ? payoutRows.map((row, index) => ({
+            place: index + 1,
+            label: row.label,
+            playerName: row.playerName || null,
+            percent: toAmount(row.percent),
+            amountEuro: toAmount(row.amount),
+          }))
+          : [],
+      });
+      setSummaryOpen(false);
+      setStep('registration');
+    } catch (error) {
+      setSummaryMessage('Ergebnis konnte nicht gespeichert werden. Bitte erneut versuchen oder ohne Speichern fortfahren.');
+    } finally {
+      setSaveBusy(false);
+    }
   };
 
   const handleSeatSelect = ({ table, seat, seatIndex, seatStatus, roles }) => {
@@ -222,6 +536,201 @@ export default function TournamentPage({
         <button type="button" className="danger-button" onClick={handleEndClick} disabled={actionBusy || isEnded}>Turnier beenden</button>
         <button type="button" className="ghost-button" onClick={() => setStep('registration')} disabled={actionBusy || (!isPaused && !isEnded)}>Zurück zur Konfiguration</button>
       </div>
+
+      {endConfirmOpen && (
+        <div className="settings-overlay" onClick={() => setEndConfirmOpen(false)}>
+          <section className={`card settings-card ${styles.endConfirmCard}`} onClick={(event) => event.stopPropagation()}>
+            <h2>Turnier wirklich beenden?</h2>
+            <p>Nach der Bestätigung wird das Turnier beendet und die Zusammenfassung angezeigt.</p>
+            <div className="settings-actions">
+              <button type="button" className="ghost-button" onClick={() => setEndConfirmOpen(false)} disabled={actionBusy}>Abbrechen</button>
+              <button type="button" className="danger-button" onClick={handleConfirmEnd} disabled={actionBusy}>Ja, Turnier beenden</button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {summaryOpen && (
+        <div className="settings-overlay" onClick={() => setSummaryOpen(false)}>
+          <section className={`card ${styles.summaryCard}`} onClick={(event) => event.stopPropagation()}>
+            <div className={styles.summaryHeader}>
+              <h2>Turnier-Zusammenfassung</h2>
+              <p>{status?.tournamentName || 'Turnier'}</p>
+            </div>
+
+            <div className={styles.summaryStatsGrid}>
+              <div><span>Dauer</span><strong>{formatDuration(status?.elapsedSeconds || 0)}</strong></div>
+              <div><span>Entries</span><strong>{formatNumber(status?.entries)}</strong></div>
+              <div><span>Rebuys</span><strong>{formatNumber(status?.rebuys)}</strong></div>
+              <div><span>Spieler übrig</span><strong>{formatNumber(status?.playersLeft)}</strong></div>
+              <div><span>Eliminierte</span><strong>{formatNumber((status?.eliminatedPlayerNames || []).length)}</strong></div>
+              <div><span>Average Stack</span><strong>{status?.playersLeft > 0 ? formatNumber(status?.averageStack) : '—'}</strong></div>
+            </div>
+
+            <div className={styles.playersLine}>
+              <strong>Aktive Spieler:</strong> {(status?.activePlayerNames || []).join(', ') || '—'}
+            </div>
+            <div className={styles.playersLine}>
+              <strong>Ausgeschieden:</strong> {(status?.eliminatedPlayerNames || []).join(', ') || '—'}
+            </div>
+
+            {hasPrizePool ? (
+              <section className={styles.payoutSection}>
+                <div className={styles.payoutHead}>
+                  <h3>Preispool & Auszahlungen</h3>
+                  <p>
+                    Buy-in: {formatCurrency(buyInEuro)} x {formatNumber(status?.entries)} + Rebuy: {formatCurrency(reentryPriceEuro)} x {formatNumber(status?.rebuys)} = <strong>{formatCurrency(prizePool)}</strong>
+                  </p>
+                </div>
+
+                <div className={styles.payoutControls}>
+                  <label>
+                    Verteilung
+                    <select value={payoutMode} onChange={(event) => handlePayoutModeChange(event.target.value)}>
+                      <option value="preset2">1. Platz 60%, 2. Platz 40%</option>
+                      <option value="preset3">1. Platz 50%, 2. Platz 30%, 3. Platz 20%</option>
+                      <option value="dynamic">Top N (abgestuft)</option>
+                      <option value="custom">Custom (Plätze)</option>
+                      <option value="deal">Deal (Spielerbasiert)</option>
+                    </select>
+                  </label>
+
+                  {(payoutMode === 'dynamic' || payoutMode === 'custom') && (
+                    <label>
+                      Plätze
+                      <input
+                        type="number"
+                        min="2"
+                        max={maxPlaces}
+                        value={dynamicPlaceCount}
+                        onChange={(event) => {
+                          const next = Math.max(2, Math.min(maxPlaces, Number(event.target.value || 2)));
+                          setDynamicPlaceCount(next);
+                          if (payoutMode === 'dynamic') {
+                            setPayoutRows(createRowsForMode('dynamic', next));
+                          }
+                        }}
+                      />
+                    </label>
+                  )}
+
+                  <label>
+                    Eingabe-Modus
+                    <select value={payoutValueMode} onChange={(event) => handleValueModeChange(event.target.value)}>
+                      <option value="percent">Prozent</option>
+                      <option value="amount">Betrag</option>
+                    </select>
+                  </label>
+                </div>
+
+                {(payoutMode === 'custom' || payoutMode === 'deal') && (
+                  <div className={styles.payoutRowActions}>
+                    <button type="button" className="ghost-button" onClick={addPayoutRow}>Zeile hinzufügen</button>
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      onClick={() => {
+                        const count = Math.max(2, Math.min(maxPlaces, dynamicPlaceCount));
+                        if (payoutMode === 'deal') {
+                          setPayoutRows(createRowsForMode('deal', count));
+                        } else {
+                          const base = Array.from({ length: count }, () => toAmount(100 / count));
+                          const delta = toAmount(100 - base.reduce((sum, value) => sum + value, 0));
+                          base[base.length - 1] = toAmount(base[base.length - 1] + delta);
+                          setPayoutRows(withSuggestedPlayers(buildRowsFromPercentages(base, prizePool)));
+                        }
+                      }}
+                    >
+                      Gleich verteilen
+                    </button>
+                  </div>
+                )}
+
+                <div className={styles.payoutTable}>
+                  {payoutRows.map((row) => (
+                    <div key={row.id} className={styles.payoutRow}>
+                      <span>{row.label}</span>
+
+                      <select value={row.playerName} onChange={(event) => handlePayoutRowChange(row.id, 'playerName', event.target.value)}>
+                        <option value="">Spieler auswählen</option>
+                        {allPlayers.map((playerName) => (
+                          <option key={playerName} value={playerName}>{playerName}</option>
+                        ))}
+                      </select>
+
+                      {payoutValueMode === 'percent' ? (
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={row.percent}
+                          onChange={(event) => handlePayoutRowChange(row.id, 'percent', event.target.value)}
+                        />
+                      ) : (
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={row.amount}
+                          onChange={(event) => handlePayoutRowChange(row.id, 'amount', event.target.value)}
+                        />
+                      )}
+
+                      <span className={styles.payoutComputed}>
+                        {payoutValueMode === 'percent'
+                          ? `${toAmount(row.percent).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}% = ${formatCurrency(row.amount)}`
+                          : `${formatCurrency(row.amount)} = ${toAmount(row.percent).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`}
+                      </span>
+
+                      {(payoutMode === 'custom' || payoutMode === 'deal') && payoutRows.length > 1 && (
+                        <button type="button" className="ghost-button" onClick={() => removePayoutRow(row.id)}>Entfernen</button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div className={`${styles.payoutTotals} ${payoutValid ? styles.payoutValid : styles.payoutInvalid}`}>
+                  <span>Summe: {totals.percent.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%</span>
+                  <span>Summe: {formatCurrency(totals.amount)}</span>
+                  {!payoutValid && <strong>Verteilung ist noch nicht gültig.</strong>}
+                  {duplicateSelectedPlayers.length > 0 && (
+                    <strong>Auszahlung enthält doppelte Spieler: {duplicateSelectedPlayers.join(', ')}</strong>
+                  )}
+                </div>
+              </section>
+            ) : (
+              <section className={styles.payoutSection}>
+                <h3>Preispool & Auszahlungen</h3>
+                <p>Keine Buy-in/Rebuy-Beträge vorhanden. Daher wird keine Auszahlung berechnet.</p>
+              </section>
+            )}
+
+            <label className={styles.persistToggle}>
+              <input
+                type="checkbox"
+                checked={persistResult}
+                onChange={(event) => setPersistResult(event.target.checked)}
+                disabled={saveBusy}
+              />
+              Ergebnis optional im Backend speichern (Konfiguration + Resultat)
+            </label>
+
+            {summaryMessage && <p className={styles.summaryMessage}>{summaryMessage}</p>}
+
+            <div className="settings-actions">
+              <button type="button" className="ghost-button" onClick={() => setSummaryOpen(false)} disabled={saveBusy}>Schließen</button>
+              <button
+                type="button"
+                className="primary-button"
+                onClick={handleBackToConfiguration}
+                disabled={saveBusy || (persistResult && !payoutValid)}
+              >
+                {saveBusy ? 'Speichern...' : 'Zurück zur Konfiguration'}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </section>
   );
 }
