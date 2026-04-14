@@ -72,6 +72,7 @@ export default function TableDistributionBoard({
   seatStatuses = {},
   onSeatSelect,
   selectedPlayerName,
+  showRoleMarkers = true,
   animate = false,
   sequenceIntervalMs = 5000,
   compact = false,
@@ -113,7 +114,7 @@ export default function TableDistributionBoard({
 
             {seatLayouts[tableIndex].map((seat, index) => {
               const { isDealerSeat, isSmallBlindSeat, isBigBlindSeat } = getSeatRoles(table, seat);
-              const hasRoleMarker = isDealerSeat || isSmallBlindSeat || isBigBlindSeat;
+              const hasRoleMarker = showRoleMarkers && (isDealerSeat || isSmallBlindSeat || isBigBlindSeat);
               const markerPosition = getMarkerPosition(seat.angle);
               const globalSeatIndex = seatStartOffsets[tableIndex] + index;
               const seatDelayMs = 240 + (globalSeatIndex * sequenceIntervalMs);
@@ -123,7 +124,7 @@ export default function TableDistributionBoard({
 
               return (
                 <div key={`${table.tableName}-${seat.player}-${index}`}>
-                  {isDealerSeat && (
+                  {showRoleMarkers && isDealerSeat && (
                     <span
                       className={`${styles.tableMarker} ${styles.markerDealer} ${animate ? styles.markerPop : ''}`}
                       style={{ left: `${markerPosition.x}%`, top: `${markerPosition.y}%`, animationDelay: `${markerDelayMs}ms` }}
@@ -131,7 +132,7 @@ export default function TableDistributionBoard({
                       Dealer
                     </span>
                   )}
-                  {isSmallBlindSeat && (
+                  {showRoleMarkers && isSmallBlindSeat && (
                     <span
                       className={`${styles.tableMarker} ${styles.markerSb} ${animate ? styles.markerPop : ''}`}
                       style={{ left: `${markerPosition.x}%`, top: `${markerPosition.y}%`, animationDelay: `${markerDelayMs}ms` }}
@@ -139,7 +140,7 @@ export default function TableDistributionBoard({
                       Small Blind
                     </span>
                   )}
-                  {isBigBlindSeat && (
+                  {showRoleMarkers && isBigBlindSeat && (
                     <span
                       className={`${styles.tableMarker} ${styles.markerBb} ${animate ? styles.markerPop : ''}`}
                       style={{ left: `${markerPosition.x}%`, top: `${markerPosition.y}%`, animationDelay: `${markerDelayMs}ms` }}
@@ -197,8 +198,17 @@ export default function TableDistributionBoard({
 
           {activeTablePopup === table.tableName && (
             <div className={styles.tablePopup} onClick={(event) => event.stopPropagation()}>
-              <strong>Rollen Runde 1</strong>
-              <pre>{getTablePopupText(table)}</pre>
+              {showRoleMarkers ? (
+                <>
+                  <strong>Rollen Runde 1</strong>
+                  <pre>{getTablePopupText(table)}</pre>
+                </>
+              ) : (
+                <>
+                  <strong>{table.tableName}</strong>
+                  <pre>Spieler: {table.players.length}</pre>
+                </>
+              )}
             </div>
           )}
         </article>

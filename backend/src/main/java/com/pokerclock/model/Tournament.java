@@ -19,6 +19,7 @@ public class Tournament {
     private int startingChips;
     private String blindStructure;
     private int blindDurationSeconds;
+    private boolean hasNeutralDealer;
     private boolean rebuyAllowed;
     private String status;
     private int entries;
@@ -29,6 +30,10 @@ public class Tournament {
     private Instant startedAt;
     private Instant resumedAt;
     private boolean running;
+
+    @Lob
+    @Column(columnDefinition = "TEXT")
+    private String tableDistributionJson;
 
     @ElementCollection
     @CollectionTable(name = "tournament_participants", joinColumns = @JoinColumn(name = "tournament_id"))
@@ -103,6 +108,14 @@ public class Tournament {
         this.rebuyAllowed = rebuyAllowed;
     }
 
+    public boolean isHasNeutralDealer() {
+        return hasNeutralDealer;
+    }
+
+    public void setHasNeutralDealer(boolean hasNeutralDealer) {
+        this.hasNeutralDealer = hasNeutralDealer;
+    }
+
     public String getStatus() {
         return status;
     }
@@ -173,6 +186,14 @@ public class Tournament {
 
     public void setRunning(boolean running) {
         this.running = running;
+    }
+
+    public String getTableDistributionJson() {
+        return tableDistributionJson;
+    }
+
+    public void setTableDistributionJson(String tableDistributionJson) {
+        this.tableDistributionJson = tableDistributionJson;
     }
 
     public List<String> getParticipants() {

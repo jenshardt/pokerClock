@@ -60,6 +60,7 @@ public class RegistrationTemplateService {
         request.setTableCount(template.getTableCount());
         request.setSeatsPerTable(template.getSeatsPerTable());
         request.setStartingChips(template.getStartingStack());
+        request.setHasNeutralDealer(template.isHasNeutralDealer());
         request.setRebuyAllowed(template.isRebuyEnabled());
 
         String blindStructure = template.getBlindLevels().stream()

@@ -1,5 +1,7 @@
 package com.pokerclock.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pokerclock.api.TournamentSetupRequest;
 import com.pokerclock.api.TournamentStatusResponse;
 import com.pokerclock.model.Tournament;
@@ -8,9 +10,13 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 @Service
@@ -20,8 +26,13 @@ public class TournamentService {
     private static final String STATUS_RUNNING = "RUNNING";
     private static final String STATUS_PAUSED = "PAUSED";
     private static final String STATUS_ENDED = "ENDED";
+    private static final int BALANCE_MIN_DIFFERENCE = 2;
+
+    private static final TypeReference<List<TableState>> TABLE_STATE_TYPE = new TypeReference<>() {
+    };
 
     private final TournamentRepository repository;
+    private final ObjectMapper objectMapper = new ObjectMapper();
     private Long currentTournamentId;
 
     public TournamentService(TournamentRepository repository) {
@@ -37,6 +48,7 @@ public class TournamentService {
         tournament.setStartingChips(request.getStartingChips());
         tournament.setBlindStructure(request.getBlindStructure());
         tournament.setBlindDurationSeconds(request.getBlindDurationSeconds());
+        tournament.setHasNeutralDealer(request.isHasNeutralDealer());
         tournament.setRebuyAllowed(request.isRebuyAllowed());
         int entries = request.getParticipants() != null ? request.getParticipants().size() : 0;
         tournament.setEntries(entries);
@@ -49,6 +61,11 @@ public class TournamentService {
         tournament.setResumedAt(null);
         tournament.setStartedAt(null);
         tournament.setRunning(false);
+        persistTableDistribution(tournament, createInitialDistribution(
+            tournament.getParticipants(),
+            tournament.getTableCount(),
+            tournament.isHasNeutralDealer()
+        ));
 
         Tournament saved = repository.save(tournament);
         currentTournamentId = saved.getId();
@@ -159,6 +176,111 @@ public class TournamentService {
         repository.save(tournament);
     }
 
+    public void balanceTables() {
+        Tournament tournament = getCurrentTournament().orElseThrow(() ->
+                new IllegalStateException("Turnier muss zuerst konfiguriert werden."));
+
+        ensurePaused(tournament);
+
+        List<TableState> tables = getTableDistribution(tournament);
+        if (tables.size() < 2) {
+            return;
+        }
+
+        Set<String> activeSet = getActivePlayerSet(tournament);
+        List<Integer> activeTableIndexes = new ArrayList<>();
+        for (int i = 0; i < tables.size(); i += 1) {
+            if (countActivePlayers(tables.get(i), activeSet) > 0) {
+                activeTableIndexes.add(i);
+            }
+        }
+
+        if (activeTableIndexes.size() < 2) {
+            return;
+        }
+
+        int sourceIdx = activeTableIndexes.stream()
+                .max(Comparator.comparingInt(idx -> countActivePlayers(tables.get(idx), activeSet)))
+                .orElse(-1);
+
+        int targetIdx = activeTableIndexes.stream()
+                .min(Comparator.comparingInt(idx -> countActivePlayers(tables.get(idx), activeSet)))
+                .orElse(-1);
+
+        if (sourceIdx < 0 || targetIdx < 0 || sourceIdx == targetIdx) {
+            return;
+        }
+
+        TableState source = tables.get(sourceIdx);
+        TableState target = tables.get(targetIdx);
+        int sourceActiveCount = countActivePlayers(source, activeSet);
+        int targetActiveCount = countActivePlayers(target, activeSet);
+        if (sourceActiveCount - targetActiveCount < BALANCE_MIN_DIFFERENCE) {
+            return;
+        }
+
+        List<String> sourceActivePlayers = source.players.stream()
+                .filter(activeSet::contains)
+                .toList();
+        if (sourceActivePlayers.isEmpty()) {
+            return;
+        }
+
+        String movedPlayer = sourceActivePlayers.get(sourceActivePlayers.size() - 1);
+        source.players.removeIf(name -> name.equals(movedPlayer));
+
+        int insertIndex = target.players.size();
+        if (target.smallBlind != null) {
+            int sbIndex = target.players.indexOf(target.smallBlind);
+            if (sbIndex >= 0) {
+                insertIndex = Math.min(sbIndex + 1, target.players.size());
+            }
+        }
+        target.players.add(insertIndex, movedPlayer);
+
+        assignRoles(source);
+        assignRoles(target);
+        persistTableDistribution(tournament, tables);
+        repository.save(tournament);
+    }
+
+    public void createFinalTable() {
+        Tournament tournament = getCurrentTournament().orElseThrow(() ->
+                new IllegalStateException("Turnier muss zuerst konfiguriert werden."));
+
+        ensurePaused(tournament);
+
+        int seatsPerTable = Math.max(1, tournament.getSeatsPerTable());
+        if (Math.max(0, tournament.getPlayersLeft()) > seatsPerTable) {
+            throw new IllegalStateException("Final Table ist erst möglich, wenn die verbleibenden Spieler auf einen Tisch passen.");
+        }
+
+        List<TableState> tables = getTableDistribution(tournament);
+        Set<String> activeSet = getActivePlayerSet(tournament);
+        List<String> finalPlayers = new ArrayList<>();
+        for (TableState table : tables) {
+            for (String player : table.players) {
+                if (activeSet.contains(player) && !finalPlayers.contains(player)) {
+                    finalPlayers.add(player);
+                }
+            }
+        }
+
+        if (finalPlayers.isEmpty()) {
+            return;
+        }
+
+        TableState finalTable = new TableState();
+        finalTable.tableName = "Tisch 1";
+        finalTable.players = new ArrayList<>(finalPlayers);
+        finalTable.neutralDealer = tournament.isHasNeutralDealer();
+        assignRoles(finalTable);
+
+        tournament.setTableCount(1);
+        persistTableDistribution(tournament, List.of(finalTable));
+        repository.save(tournament);
+    }
+
     public TournamentStatusResponse getStatus() {
         Optional<Tournament> maybeTournament = getCurrentTournament();
         if (maybeTournament.isEmpty()) {
@@ -184,6 +306,7 @@ public class TournamentService {
         List<String> activePlayers = tournament.getParticipants().stream()
             .filter((name) -> !eliminatedPlayers.contains(name))
             .collect(Collectors.toList());
+        List<TournamentStatusResponse.TableDistributionEntry> distribution = toDistributionResponse(getTableDistribution(tournament));
 
         String nextPhase = state.isBreak
             ? "Pause"
@@ -208,13 +331,154 @@ public class TournamentService {
                 .playersLeft(playersLeft)
                 .rebuys(rebuys)
                 .startingStack(startingStack)
+                .seatsPerTable(tournament.getSeatsPerTable())
                 .totalChips(totalChips)
                 .averageStack(averageStack)
                 .activePlayerNames(activePlayers)
                 .eliminatedPlayerNames(eliminatedPlayers)
+                .distribution(distribution)
                 .running(STATUS_RUNNING.equals(status))
                 .message(statusText)
                 .build();
+    }
+
+    private void ensurePaused(Tournament tournament) {
+        if (!STATUS_PAUSED.equals(normalizeStatus(tournament.getStatus()))) {
+            throw new IllegalStateException("Aktion nur im pausierten Turnier möglich.");
+        }
+    }
+
+    private List<TableState> createInitialDistribution(List<String> participants, int tableCount, boolean hasNeutralDealer) {
+        int safeTableCount = Math.max(1, tableCount);
+        List<String> shuffledPlayers = participants == null ? new ArrayList<>() : new ArrayList<>(participants);
+        Collections.shuffle(shuffledPlayers);
+
+        List<TableState> tables = new ArrayList<>();
+        for (int i = 0; i < safeTableCount; i += 1) {
+            TableState table = new TableState();
+            table.tableName = "Tisch " + (i + 1);
+            table.players = new ArrayList<>();
+            table.neutralDealer = hasNeutralDealer;
+            tables.add(table);
+        }
+
+        for (int i = 0; i < shuffledPlayers.size(); i += 1) {
+            tables.get(i % safeTableCount).players.add(shuffledPlayers.get(i));
+        }
+
+        for (TableState table : tables) {
+            if (table.players.size() > 1) {
+                int startIndex = ThreadLocalRandom.current().nextInt(table.players.size());
+                table.players = rotatePlayersFromIndex(table.players, startIndex);
+            }
+            assignRoles(table);
+        }
+
+        return tables;
+    }
+
+    private List<String> rotatePlayersFromIndex(List<String> players, int startIndex) {
+        if (players.isEmpty()) {
+            return players;
+        }
+        List<String> rotated = new ArrayList<>();
+        rotated.addAll(players.subList(startIndex, players.size()));
+        rotated.addAll(players.subList(0, startIndex));
+        return rotated;
+    }
+
+    private void assignRoles(TableState table) {
+        if (table.players == null) {
+            table.players = new ArrayList<>();
+        }
+
+        int size = table.players.size();
+        if (size == 0) {
+            table.dealer = null;
+            table.smallBlind = null;
+            table.bigBlind = null;
+            return;
+        }
+
+        if (table.neutralDealer) {
+            table.dealer = null;
+            table.smallBlind = table.players.get(0);
+            table.bigBlind = size >= 2 ? table.players.get(1 % size) : null;
+            return;
+        }
+
+        table.dealer = table.players.get(0);
+        table.smallBlind = size >= 2 ? table.players.get(1 % size) : null;
+        table.bigBlind = size >= 2 ? table.players.get(2 % size) : null;
+    }
+
+    private int countActivePlayers(TableState table, Set<String> activePlayers) {
+        return (int) table.players.stream().filter(activePlayers::contains).count();
+    }
+
+    private Set<String> getActivePlayerSet(Tournament tournament) {
+        List<String> eliminated = tournament.getEliminatedPlayers() == null ? List.of() : tournament.getEliminatedPlayers();
+        return tournament.getParticipants().stream()
+                .filter(name -> !eliminated.contains(name))
+                .collect(Collectors.toSet());
+    }
+
+    private List<TableState> getTableDistribution(Tournament tournament) {
+        String raw = tournament.getTableDistributionJson();
+        if (raw == null || raw.isBlank()) {
+            List<TableState> generated = createInitialDistribution(
+                    tournament.getParticipants(),
+                    tournament.getTableCount(),
+                    tournament.isHasNeutralDealer()
+            );
+            persistTableDistribution(tournament, generated);
+            return generated;
+        }
+
+        try {
+            List<TableState> parsed = objectMapper.readValue(raw, TABLE_STATE_TYPE);
+            if (parsed == null || parsed.isEmpty()) {
+                throw new IllegalArgumentException("Empty distribution");
+            }
+            for (TableState table : parsed) {
+                if (table.players == null) {
+                    table.players = new ArrayList<>();
+                }
+                assignRoles(table);
+            }
+            return parsed;
+        } catch (Exception ex) {
+            List<TableState> generated = createInitialDistribution(
+                    tournament.getParticipants(),
+                    tournament.getTableCount(),
+                    tournament.isHasNeutralDealer()
+            );
+            persistTableDistribution(tournament, generated);
+            return generated;
+        }
+    }
+
+    private void persistTableDistribution(Tournament tournament, List<TableState> distribution) {
+        try {
+            tournament.setTableDistributionJson(objectMapper.writeValueAsString(distribution));
+        } catch (Exception ex) {
+            throw new IllegalStateException("Tischverteilung konnte nicht gespeichert werden.", ex);
+        }
+    }
+
+    private List<TournamentStatusResponse.TableDistributionEntry> toDistributionResponse(List<TableState> distribution) {
+        List<TournamentStatusResponse.TableDistributionEntry> result = new ArrayList<>();
+        for (TableState table : distribution) {
+            TournamentStatusResponse.TableDistributionEntry entry = new TournamentStatusResponse.TableDistributionEntry();
+            entry.setTableName(table.tableName);
+            entry.setPlayers(new ArrayList<>(table.players));
+            entry.setNeutralDealer(table.neutralDealer);
+            entry.setDealer(table.dealer);
+            entry.setSmallBlind(table.smallBlind);
+            entry.setBigBlind(table.bigBlind);
+            result.add(entry);
+        }
+        return result;
     }
 
     private String normalizeName(String raw) {
@@ -438,5 +702,14 @@ public class TournamentService {
             this.nextLabel = nextLabel;
             this.currentIndex = currentIndex;
         }
+    }
+
+    private static class TableState {
+        public String tableName;
+        public List<String> players = new ArrayList<>();
+        public boolean neutralDealer;
+        public String dealer;
+        public String smallBlind;
+        public String bigBlind;
     }
 }

@@ -11,6 +11,7 @@ public class TournamentSetupRequest {
     private int startingChips;
     private String blindStructure;
     private int blindDurationSeconds;
+    private boolean hasNeutralDealer;
     private boolean rebuyAllowed;
 
     public String getTournamentName() {
@@ -67,6 +68,14 @@ public class TournamentSetupRequest {
 
     public void setBlindDurationSeconds(int blindDurationSeconds) {
         this.blindDurationSeconds = blindDurationSeconds;
+    }
+
+    public boolean isHasNeutralDealer() {
+        return hasNeutralDealer;
+    }
+
+    public void setHasNeutralDealer(boolean hasNeutralDealer) {
+        this.hasNeutralDealer = hasNeutralDealer;
     }
 
     public boolean isRebuyAllowed() {

@@ -7,6 +7,7 @@ import com.pokerclock.api.TournamentSetupRequest;
 import com.pokerclock.api.TournamentStatusResponse;
 import com.pokerclock.service.TournamentResultArchiveService;
 import com.pokerclock.service.TournamentService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -72,5 +73,22 @@ public class TournamentController {
     public ResponseEntity<Void> rebuy(@RequestBody(required = false) PlayerActionRequest request) {
         tournamentService.registerRebuy(request != null ? request.getPlayerName() : null);
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/table/balance")
+    public ResponseEntity<Void> balanceTables() {
+        tournamentService.balanceTables();
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/table/final-table")
+    public ResponseEntity<Void> createFinalTable() {
+        tournamentService.createFinalTable();
+        return ResponseEntity.ok().build();
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<String> handleIllegalState(IllegalStateException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ex.getMessage());
     }
 }

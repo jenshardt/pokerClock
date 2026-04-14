@@ -23,6 +23,7 @@ function App() {
   const [tournamentActionBusy, setTournamentActionBusy] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [showTournamentTables, setShowTournamentTables] = useState(true);
   const [currentSoundLabel, setCurrentSoundLabel] = useState('Kein Sound aktiv');
   const [soundSettings, setSoundSettings] = useState({
     muted: false,
@@ -147,6 +148,7 @@ function App() {
       voicePreference: 'auto',
     });
     setCurrentSoundLabel('Kein Sound aktiv');
+    setShowTournamentTables(true);
     clearProtectedState();
     setAuthChecked(true);
   };
@@ -254,6 +256,9 @@ function App() {
       }
       const json = await response.json();
       setStatus(json);
+      if (Array.isArray(json?.distribution)) {
+        setDistribution(json.distribution);
+      }
 
       if (!json?.running || !json?.currentBlind || !String(json.currentBlind).includes('/')) {
         return;
@@ -683,6 +688,8 @@ function App() {
   const endTournament = async () => runTournamentAction('/api/end');
   const markSeatOpen = async (playerName) => runTournamentAction('/api/seat-open', { playerName });
   const addRebuy = async (playerName) => runTournamentAction('/api/rebuy', { playerName });
+  const balanceTables = async () => runTournamentAction('/api/table/balance');
+  const createFinalTable = async () => runTournamentAction('/api/table/final-table');
 
   const saveTournamentResult = async (payload) => {
     const response = await apiFetch('/api/results', {
@@ -855,74 +862,94 @@ function App() {
               <p>Sound-Steuerung für die aktuelle Session von {currentUser.username}.</p>
             </div>
 
-            <label className="settings-toggle">
-              <input
-                type="checkbox"
-                checked={soundSettings.muted}
-                onChange={(event) => setSoundSettings((prev) => ({ ...prev, muted: event.target.checked }))}
-              />
-              Alle Sounds stummschalten
-            </label>
+            <div className="settings-group">
+              <h3 className="settings-group-title">Sound</h3>
 
-            <label>
-              Beep-Lautstärke: {Math.round(soundSettings.beepVolume * 100)}%
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={soundSettings.beepVolume}
-                onChange={(event) => setSoundSettings((prev) => ({ ...prev, beepVolume: Number(event.target.value) }))}
-              />
-            </label>
+              <label className="settings-toggle">
+                <input
+                  type="checkbox"
+                  checked={soundSettings.muted}
+                  onChange={(event) => setSoundSettings((prev) => ({ ...prev, muted: event.target.checked }))}
+                />
+                Alle Sounds stummschalten
+              </label>
 
-            <label className="settings-toggle">
-              <input
-                type="checkbox"
-                checked={soundSettings.speechEnabled}
-                onChange={(event) => setSoundSettings((prev) => ({ ...prev, speechEnabled: event.target.checked }))}
-              />
-              Sprachansagen aktivieren
-            </label>
+              <label>
+                Beep-Lautstärke: {Math.round(soundSettings.beepVolume * 100)}%
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={soundSettings.beepVolume}
+                  onChange={(event) => setSoundSettings((prev) => ({ ...prev, beepVolume: Number(event.target.value) }))}
+                />
+              </label>
 
-            <label>
-              Sprechstil
-              <select
-                value={soundSettings.speechStyle}
-                onChange={(event) => setSoundSettings((prev) => ({ ...prev, speechStyle: event.target.value }))}
-              >
-                <option value="neutral">Neutral</option>
-                <option value="commentator">Kommentator</option>
-              </select>
-            </label>
+              <label className="settings-toggle">
+                <input
+                  type="checkbox"
+                  checked={soundSettings.speechEnabled}
+                  onChange={(event) => setSoundSettings((prev) => ({ ...prev, speechEnabled: event.target.checked }))}
+                />
+                Sprachansagen aktivieren
+              </label>
 
-            <label>
-              Stimme
-              <select
-                value={soundSettings.voicePreference}
-                onChange={(event) => setSoundSettings((prev) => ({ ...prev, voicePreference: event.target.value }))}
-              >
-                <option value="auto">Automatisch (Systemstandard)</option>
-                <option value="female">Weiblich (wenn verfügbar)</option>
-                <option value="male">Männlich (wenn verfügbar)</option>
-              </select>
-            </label>
+              <label>
+                Sprechstil
+                <select
+                  value={soundSettings.speechStyle}
+                  onChange={(event) => setSoundSettings((prev) => ({ ...prev, speechStyle: event.target.value }))}
+                >
+                  <option value="neutral">Neutral</option>
+                  <option value="commentator">Kommentator</option>
+                </select>
+              </label>
 
-            <label className="settings-toggle">
-              <input
-                type="checkbox"
-                checked={soundSettings.useSampleSounds}
-                onChange={(event) => setSoundSettings((prev) => ({ ...prev, useSampleSounds: event.target.checked }))}
-              />
-              Reale Audio-Samples bevorzugen (/sounds)
-            </label>
-            <p className="settings-note">Dateien: /sounds/beep.wav, /sounds/beep-high.wav, /sounds/fanfare.wav</p>
-            <p className="settings-now-playing"><strong>Aktuell abgespielt:</strong> {currentSoundLabel}</p>
+              <label>
+                Stimme
+                <select
+                  value={soundSettings.voicePreference}
+                  onChange={(event) => setSoundSettings((prev) => ({ ...prev, voicePreference: event.target.value }))}
+                >
+                  <option value="auto">Automatisch (Systemstandard)</option>
+                  <option value="female">Weiblich (wenn verfügbar)</option>
+                  <option value="male">Männlich (wenn verfügbar)</option>
+                </select>
+              </label>
+
+              <label className="settings-toggle">
+                <input
+                  type="checkbox"
+                  checked={soundSettings.useSampleSounds}
+                  onChange={(event) => setSoundSettings((prev) => ({ ...prev, useSampleSounds: event.target.checked }))}
+                />
+                Reale Audio-Samples bevorzugen (/sounds)
+              </label>
+
+              <p className="settings-note">Dateien: /sounds/beep.wav, /sounds/beep-high.wav, /sounds/fanfare.wav</p>
+              <p className="settings-now-playing"><strong>Aktuell abgespielt:</strong> {currentSoundLabel}</p>
+
+              <div className="settings-group-actions">
+                <button type="button" className="ghost-button" onClick={runSoundDemo} disabled={soundBusy}>
+                  {soundBusy ? 'Sound-Demo läuft...' : 'Sound-Demo starten'}
+                </button>
+              </div>
+            </div>
+
+            <div className="settings-group">
+              <h3 className="settings-group-title">Anzeige</h3>
+              <label className="settings-toggle">
+                <input
+                  type="checkbox"
+                  checked={showTournamentTables}
+                  onChange={(event) => setShowTournamentTables(event.target.checked)}
+                />
+                Tischmanagement im Turnier anzeigen
+              </label>
+            </div>
 
             <div className="settings-actions">
-              <button type="button" className="ghost-button" onClick={runSoundDemo} disabled={soundBusy}>
-                {soundBusy ? 'Sound-Demo läuft...' : 'Sound-Demo starten'}
-              </button>
               <button type="button" className="primary-button" onClick={() => setSettingsOpen(false)}>Schließen</button>
             </div>
           </section>
@@ -981,6 +1008,9 @@ function App() {
           endTournament={endTournament}
           markSeatOpen={markSeatOpen}
           addRebuy={addRebuy}
+          balanceTables={balanceTables}
+          createFinalTable={createFinalTable}
+          showTableManagement={showTournamentTables}
           saveTournamentResult={saveTournamentResult}
           actionBusy={tournamentActionBusy}
         />

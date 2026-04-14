@@ -23,8 +23,10 @@ public class TournamentStatusResponse {
     private int startingStack;
     private long totalChips;
     private long averageStack;
+    private int seatsPerTable;
     private List<String> activePlayerNames = new ArrayList<>();
     private List<String> eliminatedPlayerNames = new ArrayList<>();
+    private List<TableDistributionEntry> distribution = new ArrayList<>();
     private boolean running;
     private String message;
 
@@ -176,6 +178,14 @@ public class TournamentStatusResponse {
         this.averageStack = averageStack;
     }
 
+    public int getSeatsPerTable() {
+        return seatsPerTable;
+    }
+
+    public void setSeatsPerTable(int seatsPerTable) {
+        this.seatsPerTable = seatsPerTable;
+    }
+
     public List<String> getActivePlayerNames() {
         return activePlayerNames;
     }
@@ -190,6 +200,14 @@ public class TournamentStatusResponse {
 
     public void setEliminatedPlayerNames(List<String> eliminatedPlayerNames) {
         this.eliminatedPlayerNames = eliminatedPlayerNames;
+    }
+
+    public List<TableDistributionEntry> getDistribution() {
+        return distribution;
+    }
+
+    public void setDistribution(List<TableDistributionEntry> distribution) {
+        this.distribution = distribution;
     }
 
     public boolean isRunning() {
@@ -302,6 +320,11 @@ public class TournamentStatusResponse {
             return this;
         }
 
+        public Builder seatsPerTable(int seatsPerTable) {
+            response.seatsPerTable = seatsPerTable;
+            return this;
+        }
+
         public Builder activePlayerNames(List<String> activePlayerNames) {
             response.activePlayerNames = activePlayerNames;
             return this;
@@ -309,6 +332,11 @@ public class TournamentStatusResponse {
 
         public Builder eliminatedPlayerNames(List<String> eliminatedPlayerNames) {
             response.eliminatedPlayerNames = eliminatedPlayerNames;
+            return this;
+        }
+
+        public Builder distribution(List<TableDistributionEntry> distribution) {
+            response.distribution = distribution;
             return this;
         }
 
@@ -324,6 +352,63 @@ public class TournamentStatusResponse {
 
         public TournamentStatusResponse build() {
             return response;
+        }
+    }
+
+    public static class TableDistributionEntry {
+        private String tableName;
+        private List<String> players = new ArrayList<>();
+        private boolean neutralDealer;
+        private String dealer;
+        private String smallBlind;
+        private String bigBlind;
+
+        public String getTableName() {
+            return tableName;
+        }
+
+        public void setTableName(String tableName) {
+            this.tableName = tableName;
+        }
+
+        public List<String> getPlayers() {
+            return players;
+        }
+
+        public void setPlayers(List<String> players) {
+            this.players = players;
+        }
+
+        public boolean isNeutralDealer() {
+            return neutralDealer;
+        }
+
+        public void setNeutralDealer(boolean neutralDealer) {
+            this.neutralDealer = neutralDealer;
+        }
+
+        public String getDealer() {
+            return dealer;
+        }
+
+        public void setDealer(String dealer) {
+            this.dealer = dealer;
+        }
+
+        public String getSmallBlind() {
+            return smallBlind;
+        }
+
+        public void setSmallBlind(String smallBlind) {
+            this.smallBlind = smallBlind;
+        }
+
+        public String getBigBlind() {
+            return bigBlind;
+        }
+
+        public void setBigBlind(String bigBlind) {
+            this.bigBlind = bigBlind;
         }
     }
 }

@@ -13,9 +13,10 @@ Eine auf **Spring Boot** + **React** basierende Webanwendung zur digitalen Vorbe
 5. [Docker: Build, Deploy & Start](#docker-build-deploy--start)
 6. [Screenshots der Anwendung](#screenshots-der-anwendung)
 7. [Funktionen & Features](#funktionen--features)
-8. [Beiträge & Änderungswünsche](#beiträge--änderungswünsche)
-9. [Lizenz](#lizenz)
-10. [Haftungsausschluss](#haftungsausschluss)
+8. [Exemplarischer Turnierablauf](#exemplarischer-turnierablauf)
+9. [Beiträge & Änderungswünsche](#beiträge--änderungswünsche)
+10. [Lizenz](#lizenz)
+11. [Haftungsausschluss](#haftungsausschluss)
 
 ---
 
@@ -30,7 +31,8 @@ PokerClock folgt einer klassischen **Client-Server-Architektur**:
 - Endpoints:
   - `/api/auth/` – Login, Logout, Authentifizierung
   - `/api/registration/templates/` – Registrierungsvorlagen (CRUD, Import/Export)
-  - `/api/` – Turnier-Setup, Status, Aktionen (Start, Pause, Resume, End)
+   - `/api/` – Turnier-Setup, Status, Aktionen (Start, Pause, Resume, End, Seat Open, Rebuy)
+   - `/api/table/` – Tischmanagement (Balancing, Final Table)
   - `/api/results` – Optionale Speicherung von Turnierergebnissen
 
 ### Frontend (React 18 + Vite)
@@ -366,6 +368,9 @@ Nach dem Klick auf „Turnier beenden":
 - ✓ Rebuy registrieren
 - ✓ Spieler als Seat Open markieren
 - ✓ Pause / Resume / End Tournament
+- ✓ Manuelles **Tische ausgleichen** (nur im pausierten Turnier)
+- ✓ Manuelles **Final Table erstellen** (nur im pausierten Turnier, wenn Spieler auf einen Tisch passen)
+- ✓ Tischmanagement im Turnier über **Settings ein-/ausblendbar**
 
 ### Phase 4: Ergebnisse & Auszahlung
 - ✓ Summary mit Turnier-Statistiken
@@ -381,9 +386,45 @@ Nach dem Klick auf „Turnier beenden":
 - ✓ Authentifizierung & Session-Management
 - ✓ Responsives Design (Desktop, Tablet)
 - ✓ Sound-Einstellungen (Blind-Ansagen, Fanfaren)
+- ✓ Gruppierte Settings-Bereiche (Sound / Anzeige)
 - ✓ Dark Mode Theme
 - ✓ Error-Messages & User Feedback
 - ✓ Persistent Login (Token in localStorage)
+
+---
+
+## 🧭 Exemplarischer Turnierablauf
+
+### 1. Anmeldung
+- Benutzer meldet sich mit berechtigtem Account an.
+- Session-Token wird im Frontend gespeichert.
+
+### 2. Turnier vorbereiten
+- Turnierdaten, Buy-in/Rebuy-Regeln, Teilnehmerliste und Blindstruktur erfassen.
+- Optional als Vorlage speichern oder bestehende Vorlage laden.
+
+### 3. Tischverteilung erzeugen
+- Turnier aus Vorlage erstellen.
+- Sitzplätze werden auf Tische verteilt und im Vorbereitungsscreen angezeigt.
+
+### 4. Turnier starten
+- Mit „Turnier starten“ beginnt Level 1.
+- Clock, Blindstufen und Spielerstatistiken laufen live mit.
+
+### 5. Live-Spielbetrieb
+- Während des Spiels: Seat Open markieren und Rebuy erfassen.
+- Bei Bedarf Turnier pausieren (z. B. für organisatorische Aktionen).
+
+### 6. Tischmanagement im Pausenmodus
+- **Tische ausgleichen:** Ein Spieler wird vom größten zum kleinsten aktiven Tisch verschoben.
+- **Final Table erstellen:** Verfügbare aktive Spieler werden auf **Tisch 1** zusammengeführt.
+- Beide Aktionen sind nur verfügbar, wenn das Turnier pausiert ist.
+- Über Settings kann die Anzeige des Tischmanagements auf der Turnierseite ein- oder ausgeschaltet werden.
+
+### 7. Turnier beenden und Ergebnis erfassen
+- Turnier beenden öffnet die Zusammenfassung mit Kennzahlen.
+- Preispool berechnen, Auszahlungsmodus wählen, Spieler zuordnen.
+- Ergebnis optional im Backend speichern.
 
 ---
 

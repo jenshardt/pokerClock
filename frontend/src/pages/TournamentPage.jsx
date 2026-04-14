@@ -73,6 +73,9 @@ export default function TournamentPage({
   endTournament,
   markSeatOpen,
   addRebuy,
+  balanceTables,
+  createFinalTable,
+  showTableManagement = true,
   saveTournamentResult,
   actionBusy,
 }) {
@@ -99,6 +102,8 @@ export default function TournamentPage({
   const hasPrizePool = prizePool > 0;
   const activePlayers = status?.activePlayerNames || [];
   const eliminatedPlayersInOrder = status?.eliminatedPlayerNames || [];
+  const seatsPerTable = Number(status?.seatsPerTable || tournamentConfig?.seatsPerTable || 0);
+  const finalTableEligible = Number(status?.playersLeft || 0) > 1 && Number(status?.playersLeft || 0) <= seatsPerTable;
 
   const allPlayers = useMemo(() => {
     const unique = new Set();
@@ -189,6 +194,13 @@ export default function TournamentPage({
     });
     return map;
   }, [status]);
+
+  useEffect(() => {
+    if (showTableManagement) {
+      return;
+    }
+    setSelectedSeatAction(null);
+  }, [showTableManagement]);
 
   useEffect(() => {
     if (!selectedSeatAction) {
@@ -481,50 +493,53 @@ export default function TournamentPage({
             </div>
           </div>
 
-          <section className={styles.tableBoardSection}>
-            <div className={styles.tableBoardHead}>
-              <h3 className={styles.panelHeading}>Tischplan</h3>
-              <p>Klicke auf einen Platz, um Spieler als ausgeschieden zu markieren oder einen Rebuy auszuführen.</p>
-            </div>
-
-            <TableDistributionBoard
-              distribution={distribution}
-              activeTablePopup={activeTablePopup}
-              setActiveTablePopup={setActiveTablePopup}
-              seatStatuses={seatStatuses}
-              onSeatSelect={handleSeatSelect}
-              selectedPlayerName={selectedSeatAction?.playerName}
-              compact
-            />
-
-            {selectedSeatAction && (
-              <div className={styles.seatActionPanel}>
-                <div className={styles.seatActionMeta}>
-                  <strong>{selectedSeatAction.playerName}</strong>
-                  <span>{selectedSeatAction.tableName}, Platz {selectedSeatAction.seatNumber}</span>
-                </div>
-                <div className={styles.seatActionButtons}>
-                  <button
-                    type="button"
-                    className="ghost-button"
-                    onClick={handleSeatOpen}
-                    disabled={actionBusy || isEnded || selectedSeatAction.seatStatus !== 'active'}
-                  >
-                    Seat open
-                  </button>
-                  <button
-                    type="button"
-                    className="primary-button"
-                    onClick={handleRebuy}
-                    disabled={actionBusy || isEnded || selectedSeatAction.seatStatus !== 'eliminated'}
-                  >
-                    Rebuy
-                  </button>
-                  <button type="button" className="ghost-button" onClick={() => setSelectedSeatAction(null)} disabled={actionBusy}>Schließen</button>
-                </div>
+          {showTableManagement && (
+            <section className={styles.tableBoardSection}>
+              <div className={styles.tableBoardHead}>
+                <h3 className={styles.panelHeading}>Tischplan</h3>
+                <p>Klicke auf einen Platz, um Spieler als ausgeschieden zu markieren oder einen Rebuy auszuführen.</p>
               </div>
-            )}
-          </section>
+
+              <TableDistributionBoard
+                distribution={distribution}
+                activeTablePopup={activeTablePopup}
+                setActiveTablePopup={setActiveTablePopup}
+                seatStatuses={seatStatuses}
+                onSeatSelect={handleSeatSelect}
+                selectedPlayerName={selectedSeatAction?.playerName}
+                showRoleMarkers={false}
+                compact
+              />
+
+              {selectedSeatAction && (
+                <div className={styles.seatActionPanel}>
+                  <div className={styles.seatActionMeta}>
+                    <strong>{selectedSeatAction.playerName}</strong>
+                    <span>{selectedSeatAction.tableName}, Platz {selectedSeatAction.seatNumber}</span>
+                  </div>
+                  <div className={styles.seatActionButtons}>
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      onClick={handleSeatOpen}
+                      disabled={actionBusy || isEnded || selectedSeatAction.seatStatus !== 'active'}
+                    >
+                      Seat open
+                    </button>
+                    <button
+                      type="button"
+                      className="primary-button"
+                      onClick={handleRebuy}
+                      disabled={actionBusy || isEnded || selectedSeatAction.seatStatus !== 'eliminated'}
+                    >
+                      Rebuy
+                    </button>
+                    <button type="button" className="ghost-button" onClick={() => setSelectedSeatAction(null)} disabled={actionBusy}>Schließen</button>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
         </>
       ) : (
         <p>Kein Status verfügbar.</p>
@@ -533,6 +548,8 @@ export default function TournamentPage({
       <div className={styles.controlBar}>
         <button type="button" className="ghost-button" onClick={pauseTournament} disabled={actionBusy || !isRunning}>Turnier pausieren</button>
         <button type="button" className="ghost-button" onClick={resumeTournament} disabled={actionBusy || isEnded || isRunning}>Turnier fortsetzen</button>
+        {showTableManagement && <button type="button" className="ghost-button" onClick={balanceTables} disabled={actionBusy || !isPaused || isEnded}>Tische ausgleichen</button>}
+        {showTableManagement && <button type="button" className="ghost-button" onClick={createFinalTable} disabled={actionBusy || !isPaused || isEnded || !finalTableEligible}>Final Table erstellen</button>}
         <button type="button" className="danger-button" onClick={handleEndClick} disabled={actionBusy || isEnded}>Turnier beenden</button>
         <button type="button" className="ghost-button" onClick={() => setStep('registration')} disabled={actionBusy || (!isPaused && !isEnded)}>Zurück zur Konfiguration</button>
       </div>

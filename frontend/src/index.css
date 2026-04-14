@@ -179,6 +179,26 @@ p {
   margin: 0;
 }
 
+.settings-group {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid rgba(214, 172, 87, 0.18);
+  border-radius: 10px;
+  background: rgba(5, 25, 16, 0.42);
+}
+
+.settings-group-title {
+  margin: 0 0 10px;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #d6ac57;
+}
+
+.settings-group-actions {
+  margin-top: 8px;
+}
+
 .settings-toggle {
   display: flex;
   align-items: center;
