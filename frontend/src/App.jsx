@@ -25,6 +25,8 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showTournamentTables, setShowTournamentTables] = useState(true);
   const [currentSoundLabel, setCurrentSoundLabel] = useState('Kein Sound aktiv');
+  const [createTournamentConfirmOpen, setCreateTournamentConfirmOpen] = useState(false);
+  const [abortTournamentConfirmOpen, setAbortTournamentConfirmOpen] = useState(false);
   const [soundSettings, setSoundSettings] = useState({
     muted: false,
     beepVolume: 1,
@@ -632,24 +634,43 @@ function App() {
   };
 
   const startTournament = async () => {
+    setCreateTournamentConfirmOpen(true);
+  };
+
+  const confirmStartTournament = async () => {
+    setCreateTournamentConfirmOpen(false);
+    setStep('tournament');
+    setMessage('');
+    await fetchStatus();
+  };
+
+  const shuffleUpAndDeal = async () => {
     try {
-      const response = await apiFetch('/api/start', { method: 'POST' });
-      if (!response.ok) {
-        setMessage('Turnierstart fehlgeschlagen.');
-        return;
-      }
-
       const sound = getSoundManager();
-      await sound.playFanfare();
-
-      setStep('tournament');
-      setMessage('');
-      fetchStatus();
+      await sound.playBlindStageTransition();
+      await Promise.all([
+        resumeTournament(),
+        sound.speak('Shuffle Up and Deal', { lang: 'en-US' }),
+      ]);
     } catch (error) {
       if (error.message !== 'UNAUTHORIZED') {
         console.error(error);
       }
     }
+  };
+
+  const requestBackToConfiguration = () => {
+    setAbortTournamentConfirmOpen(true);
+  };
+
+  const confirmBackToConfiguration = async () => {
+    if (status?.status !== 'Turnier beendet') {
+      await endTournament();
+    }
+    setAbortTournamentConfirmOpen(false);
+    setStep('registration');
+    setMessage('Turnier wurde abgebrochen.');
+    await fetchStatus();
   };
 
   const runTournamentAction = async (endpoint, payload = null) => {
@@ -956,7 +977,7 @@ function App() {
         </div>
       )}
 
-      {message && <div className="message-banner">{message}</div>}
+      {message && step !== 'tournament' && <div className="message-banner">{message}</div>}
 
       {step === 'registration' && (
         <RegistrationPage
@@ -1013,7 +1034,35 @@ function App() {
           showTableManagement={showTournamentTables}
           saveTournamentResult={saveTournamentResult}
           actionBusy={tournamentActionBusy}
+          shuffleUpAndDeal={shuffleUpAndDeal}
+          requestBackToConfiguration={requestBackToConfiguration}
         />
+      )}
+
+      {createTournamentConfirmOpen && (
+        <div className="settings-overlay" onClick={() => setCreateTournamentConfirmOpen(false)}>
+          <section className="card settings-card" onClick={(event) => event.stopPropagation()}>
+            <h2>Turnier kann beginnen?</h2>
+            <p>Nach der Bestätigung wird nur auf die Turnierseite gewechselt. Es wird noch kein Sound abgespielt und die Uhr startet noch nicht.</p>
+            <div className="settings-actions">
+              <button type="button" className="ghost-button" onClick={() => setCreateTournamentConfirmOpen(false)}>Abbrechen</button>
+              <button type="button" className="primary-button" onClick={confirmStartTournament}>Ja, zur Turnierseite</button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {abortTournamentConfirmOpen && (
+        <div className="settings-overlay" onClick={() => setAbortTournamentConfirmOpen(false)}>
+          <section className="card settings-card" onClick={(event) => event.stopPropagation()}>
+            <h2>Zurück zur Konfiguration?</h2>
+            <p>Wenn du zur Konfiguration zurückgehst, wird das aktuelle Turnier abgebrochen.</p>
+            <div className="settings-actions">
+              <button type="button" className="ghost-button" onClick={() => setAbortTournamentConfirmOpen(false)}>Abbrechen</button>
+              <button type="button" className="danger-button" onClick={confirmBackToConfiguration}>Ja, Turnier abbrechen</button>
+            </div>
+          </section>
+        </div>
       )}
     </div>
   );

@@ -98,7 +98,8 @@ p {
 
 .user-pill-button {
   text-align: left;
-  cursor: pointer;
+    cursor: pointer;
+    color: #e8e8e8;
 }
 
 .user-menu-dropdown {

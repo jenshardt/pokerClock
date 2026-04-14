@@ -81,8 +81,8 @@ export default function PreparationPage({
       />
 
       <div className="toolbar">
-        <button type="button" className="ghost-button" onClick={() => setStep('registration')}>Zurück zur Tuniervorbereitung</button>
-        <button type="button" className="primary-button" onClick={startTournament}>Turnier starten</button>
+        <button type="button" className="ghost-button" onClick={() => setStep('registration')}>Zurück zur Tunierkonfiguration</button>
+        <button type="button" className="primary-button" onClick={startTournament}>Turnier kann beginnen</button>
       </div>
     </section>
   );

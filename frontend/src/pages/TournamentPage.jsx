@@ -78,11 +78,14 @@ export default function TournamentPage({
   showTableManagement = true,
   saveTournamentResult,
   actionBusy,
+  shuffleUpAndDeal,
+  requestBackToConfiguration,
 }) {
   const statusText = status?.status || 'Turnier bereit';
   const isPaused = statusText === 'Turnier pausiert';
   const isRunning = statusText === 'Turnier läuft';
   const isEnded = statusText === 'Turnier beendet';
+  const isReady = statusText === 'Turnier bereit';
   const heroClockText = formatClock(status?.remainingSeconds);
   const [activeTablePopup, setActiveTablePopup] = useState(null);
   const [selectedSeatAction, setSelectedSeatAction] = useState(null);
@@ -546,12 +549,21 @@ export default function TournamentPage({
       )}
 
       <div className={styles.controlBar}>
-        <button type="button" className="ghost-button" onClick={pauseTournament} disabled={actionBusy || !isRunning}>Turnier pausieren</button>
-        <button type="button" className="ghost-button" onClick={resumeTournament} disabled={actionBusy || isEnded || isRunning}>Turnier fortsetzen</button>
-        {showTableManagement && <button type="button" className="ghost-button" onClick={balanceTables} disabled={actionBusy || !isPaused || isEnded}>Tische ausgleichen</button>}
-        {showTableManagement && <button type="button" className="ghost-button" onClick={createFinalTable} disabled={actionBusy || !isPaused || isEnded || !finalTableEligible}>Final Table erstellen</button>}
-        <button type="button" className="danger-button" onClick={handleEndClick} disabled={actionBusy || isEnded}>Turnier beenden</button>
-        <button type="button" className="ghost-button" onClick={() => setStep('registration')} disabled={actionBusy || (!isPaused && !isEnded)}>Zurück zur Konfiguration</button>
+        {isReady ? (
+          <>
+            {shuffleUpAndDeal && <button type="button" className="primary-button" onClick={shuffleUpAndDeal} disabled={actionBusy}>Shuffle Up and Deal</button>}
+            <button type="button" className="ghost-button" onClick={requestBackToConfiguration} disabled={actionBusy}>Zurück zur Konfiguration</button>
+          </>
+        ) : (
+          <>
+            <button type="button" className="ghost-button" onClick={pauseTournament} disabled={actionBusy || !isRunning}>Turnier pausieren</button>
+            <button type="button" className="ghost-button" onClick={resumeTournament} disabled={actionBusy || isEnded || isRunning}>Turnier fortsetzen</button>
+            {showTableManagement && <button type="button" className="ghost-button" onClick={balanceTables} disabled={actionBusy || !isPaused || isEnded}>Tische ausgleichen</button>}
+            {showTableManagement && <button type="button" className="ghost-button" onClick={createFinalTable} disabled={actionBusy || !isPaused || isEnded || !finalTableEligible}>Final Table erstellen</button>}
+            <button type="button" className="danger-button" onClick={handleEndClick} disabled={actionBusy || isEnded}>Turnier beenden</button>
+            <button type="button" className="ghost-button" onClick={requestBackToConfiguration} disabled={actionBusy || (!isPaused && !isEnded)}>Zurück zur Konfiguration</button>
+          </>
+        )}
       </div>
 
       {endConfirmOpen && (
@@ -568,7 +580,7 @@ export default function TournamentPage({
       )}
 
       {summaryOpen && (
-        <div className="settings-overlay" onClick={() => setSummaryOpen(false)}>
+        <div className="settings-overlay">
           <section className={`card ${styles.summaryCard}`} onClick={(event) => event.stopPropagation()}>
             <div className={styles.summaryHeader}>
               <h2>Turnier-Zusammenfassung</h2>
@@ -735,7 +747,6 @@ export default function TournamentPage({
             {summaryMessage && <p className={styles.summaryMessage}>{summaryMessage}</p>}
 
             <div className="settings-actions">
-              <button type="button" className="ghost-button" onClick={() => setSummaryOpen(false)} disabled={saveBusy}>Schließen</button>
               <button
                 type="button"
                 className="primary-button"

@@ -209,12 +209,12 @@ export default function RegistrationPage({
 
       <div className="toolbar">
         <div className="button-row">
-          <button type="button" className="ghost-button" onClick={saveTemplate}>Turnierstruktur speichern</button>
-          <button type="button" className="ghost-button" onClick={exportTemplate}>Turnierstruktur exportieren</button>
-          <button type="button" className="ghost-button" onClick={triggerImport}>Turnierstruktur importieren</button>
+          <button type="button" className="ghost-button" onClick={saveTemplate}>Speichern</button>
+          <button type="button" className="ghost-button" onClick={exportTemplate}>Exportieren</button>
+          <button type="button" className="ghost-button" onClick={triggerImport}>Importieren</button>
           <input ref={importInputRef} type="file" accept="application/json" onChange={importTemplate} hidden />
         </div>
-        <button type="button" className="primary-button" onClick={createTournament}>Turnier anlegen</button>
+        <button type="button" className="primary-button" onClick={createTournament}>Turnier starten</button>
       </div>
     </section>
   );

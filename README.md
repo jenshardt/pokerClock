@@ -1,6 +1,6 @@
 # PokerClock – Pokerturniere digital organisieren
 
-Eine auf **Spring Boot** + **React** basierende Webanwendung zur digitalen Vorbereitung, Durchführung und Verwaltung von Pokerturnieren mit Live-Tischverteilung, automatischen Blindstruktur-Verwaltung und Ergebnisregistrierung.
+Eine auf **Spring Boot** + **React** basierende Webanwendung zur digitalen Vorbereitung, Durchführung und Verwaltung von Pokerturnieren mit Live-Tischverteilung, Blindstruktur-Verwaltung, kontrolliertem Turnierstart per **Shuffle Up and Deal**, manuellem Tischmanagement und abschließender Ergebnisregistrierung.
 
 ---
 
@@ -28,12 +28,25 @@ PokerClock folgt einer klassischen **Client-Server-Architektur**:
 - **REST-API** für Turnierverwaltung, Authentifizierung und Echtzeit-Status
 - **PostgreSQL-Datenbank** für persistente Speicherung (Registrierungsvorlagen, Turniere, Ergebnisse)
 - **JPA/Hibernate** für Datenzugriff und Entitätsverwaltung
+- **Service-Layer** als zentrale fachliche Logik für Turnierzustände, Zeitberechnung, Tischverteilung, Rebuy-Verarbeitung und Ergebnisaufbereitung
 - Endpoints:
   - `/api/auth/` – Login, Logout, Authentifizierung
   - `/api/registration/templates/` – Registrierungsvorlagen (CRUD, Import/Export)
    - `/api/` – Turnier-Setup, Status, Aktionen (Start, Pause, Resume, End, Seat Open, Rebuy)
    - `/api/table/` – Tischmanagement (Balancing, Final Table)
   - `/api/results` – Optionale Speicherung von Turnierergebnissen
+
+### Fachliche Zustandslogik
+- Ein Turnier durchläuft die Zustände **READY**, **RUNNING**, **PAUSED** und **ENDED**.
+- Der Wechsel von der Tischverteilung auf die Turnierseite ist bewusst vom echten Start getrennt.
+- Erst über **Shuffle Up and Deal** beginnt das Turnier fachlich: Die Startsequenz wird abgespielt und die Uhr wird gestartet.
+- Organisatorische Eingriffe wie **Tische ausgleichen** und **Final Table erstellen** sind ausschließlich im Zustand **PAUSED** erlaubt.
+
+### Architektonische Besonderheiten der Turniersteuerung
+- Die **Tischverteilung** wird serverseitig als JSON im Turnier gespeichert und bei Statusabfragen an das Frontend zurückgegeben.
+- Das Frontend arbeitet zustandsorientiert mit den Ansichten **Registrierung**, **Tischverteilung**, **Turnier** und **Zusammenfassung**.
+- Die Turnierseite verwendet denselben Status-Endpunkt sowohl für Clock, Blindinformationen und Kennzahlen als auch für die Anzeige des aktuellen Tischplans.
+- Die Ergebniszusammenfassung ist als kontrollierter Abschlussdialog umgesetzt: Sie wird nach Turnierende angezeigt und kann nur über die vorgesehenen Aktionen verlassen werden.
 
 ### Frontend (React 18 + Vite)
 - **React-Komponenten** für alle Phasen (Authentifizierung, Registrierung, Tischverteilung, Turnier, Ergebnisse)
@@ -207,7 +220,7 @@ mvn clean package -DskipTests
 
 Diese Punkte sollten erledigt sein, bevor du die App anderen zeigst oder in ein erreichbares Umfeld deployest.
 
-### A) Für **lokales Docker Desktop** (Demo, Team-intern)
+### A) Für **lokales Docker Desktop** (lokal)
 
 1. **Lokale Secrets setzen, nie committen**
    - `.env.example` nach `.env` kopieren.
@@ -226,7 +239,7 @@ Diese Punkte sollten erledigt sein, bevor du die App anderen zeigst oder in ein 
    - `git status` muss sauber sein.
    - Nochmal nach harten Credentials suchen (z. B. mit `gitleaks`).
 
-### B) Für **offenes Kubernetes-Cluster** (Internet/extern erreichbar)
+### B) Für **offenes Kubernetes-Cluster** (Internet / extern erreichbar)
 
 1. **Secrets-Management erzwingen**
    - Keine Klartext-Secrets in `Deployment`, `ConfigMap`, `values.yaml`.
@@ -308,19 +321,23 @@ Diese Punkte sollten erledigt sein, bevor du die App anderen zeigst oder in ein 
 - Visuelle Darstellung der Tischverteilung
 - Alle Spieler sind zugeordnet
 - Dealer- und Blinds-Positionen sind markiert
-- Button zum Starten des Turniers
+- Kontrollierter Übergang mit **„Turnier kann beginnen“**
+- Bestätigungsdialog vor dem Wechsel auf die Turnierseite
+- Noch **kein** Sound und **kein** Start der Uhr in dieser Phase
 - Möglichkeit, zur Konfiguration zurückzukehren
 
 ### 4. Turnier im Betrieb (Running Tournament)
 ![Turnier Screen](./docs/images/Tunier_Screen.png)
 
 **Beschreibung:**
+- **Ready-Phase vor dem echten Start:** Nach dem Wechsel auf die Turnierseite ist zunächst nur der Turnierstatus sichtbar.
+- **Shuffle Up and Deal** ist der fachliche Startpunkt: Erst dann laufen Beep-Sequenz, Sprachansage und Clock.
 - **Live Clock:** Countdown für aktuelle Blindstufe
 - **Current Blinds:** SB/BB-Werte und nächste Stufe
 - **Spieler-Statistiken:** Entries, Players Left, Average Stack, Total Chips
 - **Rebuys:** Gezählte Rebuys während des Turniers
 - **Tischplan:** Alle aktiven Spieler mit Live-Anzeige
-- **Kontrollbuttons:** Pause, Resume, End Tournament
+- **Kontrollbuttons:** abhängig vom Zustand, z. B. Shuffle Up and Deal, Pause, Resume, End Tournament
 
 ### 5. Spieler-Aktionen (Seat Open / Rebuy)
 ![Turnier SeatOpen Detail](./docs/images/Tunier_SeatOpen.png)
@@ -332,6 +349,8 @@ Diese Punkte sollten erledigt sein, bevor du die App anderen zeigst oder in ein 
 - Daten werden in Echtzeit aktualisiert
 
 ### 6. Turnier-Zusammenfassung & Ergebnisse
+![Zusammenfassung Screen](./docs/images/Zusammenfassung_Screen.png)
+
 Nach dem Klick auf „Turnier beenden":
 - **Bestätigungsdialog** in der App (kein Browser-Popup)
 - **Summary Modal** mit:
@@ -342,6 +361,12 @@ Nach dem Klick auf „Turnier beenden":
   - **Eingabe-Modi:** Prozent oder Betrag
   - **Spieler-Auswahl:** Automatische Vorschläge nach Ausscheidungsreihenfolge
   - **Optionales Speichern:** Ergebnis im Backend persistieren
+   - **Kontrollierter Abschluss:** Die Zusammenfassung bleibt geöffnet, bis sie über die vorgesehene Aktion beendet wird
+
+**Technische Einordnung:**
+- Die Zusammenfassung verwendet die finalen Statusdaten des Turniers und ergänzt diese um berechnete Werte wie Preispool, Summenprüfung und Auszahlungsmodelle.
+- Die Eingabemaske validiert Summen, doppelte Spielerzuordnungen und unvollständige Payout-Zuordnungen direkt im Frontend.
+- Optional kann die komplette Ergebnisstruktur inklusive Konfiguration und Auszahlungen über `/api/results` im Backend archiviert werden.
 
 ---
 
@@ -360,8 +385,14 @@ Nach dem Klick auf „Turnier beenden":
 - ✓ Dealer & Blinds-Positionen
 - ✓ Optionale Neutral-Dealer-Regel
 - ✓ Visuelle Vorschau vor Turnierbeginn
+- ✓ Kontrollierter Übergang auf die Turnierseite mit Bestätigungsdialog
+- ✓ Fachliche Trennung zwischen **Turnierseite öffnen** und **Turnier wirklich starten**
 
 ### Phase 3: Live Tournament
+- ✓ Startphase mit Status **Turnier bereit**
+- ✓ Start des Turniers erst über **Shuffle Up and Deal**
+- ✓ Beep-Sequenz vor Turnierstart und vor Blindwechseln
+- ✓ Sprachansage parallel zum Start der Clock bei **Shuffle Up and Deal**
 - ✓ Echtzeit-Blind-Countdown
 - ✓ Aktuelle Blindstufe anzeigen
 - ✓ Spielerjlist (aktiv / ausgeschieden)
@@ -371,9 +402,11 @@ Nach dem Klick auf „Turnier beenden":
 - ✓ Manuelles **Tische ausgleichen** (nur im pausierten Turnier)
 - ✓ Manuelles **Final Table erstellen** (nur im pausierten Turnier, wenn Spieler auf einen Tisch passen)
 - ✓ Tischmanagement im Turnier über **Settings ein-/ausblendbar**
+- ✓ Schutzdialog beim Zurückgehen zur Konfiguration mit Hinweis auf Turnierabbruch
 
 ### Phase 4: Ergebnisse & Auszahlung
 - ✓ Summary mit Turnier-Statistiken
+- ✓ Summary-Screenshot und visuell geführter Abschlussdialog
 - ✓ Automatische Preispool-Berechnung
 - ✓ Auszahlungs-Presets (60/40, 50/30/20, Top-N-dynamisch)
 - ✓ Custom-Verteilung (Prozent oder Betrag)
@@ -381,6 +414,7 @@ Nach dem Klick auf „Turnier beenden":
 - ✓ Automatische Platz-Vorschläge nach Ausscheidungsreihenfolge
 - ✓ Validierung von Prozent/Betrag-Summen
 - ✓ Optionales Speichern von Ergebnis & Konfiguration im Backend
+- ✓ Summary nur über die vorgesehenen Buttons verlassbar
 
 ### Zusatzfeatures
 - ✓ Authentifizierung & Session-Management
@@ -408,12 +442,14 @@ Nach dem Klick auf „Turnier beenden":
 - Sitzplätze werden auf Tische verteilt und im Vorbereitungsscreen angezeigt.
 
 ### 4. Turnier starten
-- Mit „Turnier starten“ beginnt Level 1.
-- Clock, Blindstufen und Spielerstatistiken laufen live mit.
+- In der Tischverteilung wird mit **„Turnier kann beginnen“** auf die Turnierseite gewechselt.
+- Das Turnier befindet sich dort zunächst im Zustand **bereit**.
+- Erst mit **Shuffle Up and Deal** startet Level 1 fachlich und technisch.
 
 ### 5. Live-Spielbetrieb
 - Während des Spiels: Seat Open markieren und Rebuy erfassen.
 - Bei Bedarf Turnier pausieren (z. B. für organisatorische Aktionen).
+- Ein Zurückgehen in die Konfiguration ist nur nach Bestätigung möglich und bricht das laufende Turnier bewusst ab.
 
 ### 6. Tischmanagement im Pausenmodus
 - **Tische ausgleichen:** Ein Spieler wird vom größten zum kleinsten aktiven Tisch verschoben.
@@ -424,6 +460,7 @@ Nach dem Klick auf „Turnier beenden":
 ### 7. Turnier beenden und Ergebnis erfassen
 - Turnier beenden öffnet die Zusammenfassung mit Kennzahlen.
 - Preispool berechnen, Auszahlungsmodus wählen, Spieler zuordnen.
+- Die Zusammenfassung ist als Abschlussdialog ausgelegt und bleibt offen, bis sie aktiv beendet wird.
 - Ergebnis optional im Backend speichern.
 
 ---
