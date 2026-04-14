@@ -6,14 +6,14 @@ Eine auf **Spring Boot** + **React** basierende Webanwendung zur digitalen Vorbe
 
 ## 📋 Inhaltsverzeichnis
 
-1. [Architektur](#architektur)
-2. [Technologie-Stack](#technologie-stack)
-3. [Projekt-Struktur](#projekt-struktur)
-4. [Build & Entwicklung](#build--entwicklung)
-5. [Docker: Build, Deploy & Start](#docker-build-deploy--start)
-6. [Screenshots der Anwendung](#screenshots-der-anwendung)
-7. [Funktionen & Features](#funktionen--features)
-8. [Exemplarischer Turnierablauf](#exemplarischer-turnierablauf)
+1. [Architektur](#-architektur)
+2. [Technologie-Stack](#-technologie-stack)
+3. [Projekt-Struktur](#-projekt-struktur)
+4. [Build & Entwicklung](#-build--entwicklung)
+5. [Docker: Build, Deploy & Start](#-docker-build-deploy--start)
+6. [Screenshots der Anwendung](#-screenshots-der-anwendung)
+7. [Funktionen & Features](#-funktionen--features)
+8. [Exemplarischer Turnierablauf](#-exemplarischer-turnierablauf)
 9. [Beiträge & Änderungswünsche](#beiträge--änderungswünsche)
 10. [Lizenz](#lizenz)
 11. [Haftungsausschluss](#haftungsausschluss)
