@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AUTH_TOKEN_KEY, getRandomDelayMs } from './api';
-import { DEFAULT_BLIND_LEVELS, initialForm } from './constants';
+import {
+  AUDIO_TIMING_CONFIG,
+  AVAILABLE_SOUND_FILES,
+  DEFAULT_BLIND_LEVELS,
+  DEFAULT_SPECIAL_SEAT_SOUNDS,
+  SEAT_OPEN_SOUND,
+  STEP_MUSIC_TRACKS,
+  initialForm,
+} from './constants';
 import LoginPage from './pages/LoginPage';
 import PreparationPage from './pages/PreparationPage';
 import RegistrationPage from './pages/RegistrationPage';
@@ -21,6 +29,9 @@ function App() {
   const [authBusy, setAuthBusy] = useState(false);
   const [soundBusy, setSoundBusy] = useState(false);
   const [tournamentActionBusy, setTournamentActionBusy] = useState(false);
+  const [specialSeatSounds, setSpecialSeatSounds] = useState(DEFAULT_SPECIAL_SEAT_SOUNDS);
+  const [newMappingName, setNewMappingName] = useState('');
+  const [newMappingSound, setNewMappingSound] = useState(AVAILABLE_SOUND_FILES[0] ? `/sounds/${AVAILABLE_SOUND_FILES[0]}` : '');
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showTournamentTables, setShowTournamentTables] = useState(true);
@@ -34,6 +45,9 @@ function App() {
     useSampleSounds: true,
     speechStyle: 'neutral',
     voicePreference: 'auto',
+    seatShowEnabled: true,
+    seatShowSpeed: 'normal',
+    seatShowVoiceEnabled: true,
   });
   const [loginUsername, setLoginUsername] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -41,7 +55,10 @@ function App() {
   const importInputRef = useRef(null);
   const authTimeoutRef = useRef(null);
   const soundManagerRef = useRef(null);
-  const lastBlindAnnouncementRef = useRef(null);
+  const scheduleSnapshotRef = useRef(null);
+  const playedCountdownSecondKeysRef = useRef(new Set());
+  const soundQueueRef = useRef(Promise.resolve());
+  const previousStepRef = useRef('registration');
   const userMenuRef = useRef(null);
 
   const participants = useMemo(
@@ -114,6 +131,31 @@ function App() {
     });
   }, [soundSettings]);
 
+  useEffect(() => {
+    if (!currentUser) {
+      previousStepRef.current = step;
+      return;
+    }
+
+    const sound = getSoundManager();
+    const previousStep = previousStepRef.current;
+
+    if (step === 'registration') {
+      void sound.startBackgroundMusic(STEP_MUSIC_TRACKS.registration, {
+        crossfadeMs: previousStep === 'preparation' ? AUDIO_TIMING_CONFIG.musicCrossfadeMs : 0,
+        fadeInMs: previousStep === 'tournament' ? AUDIO_TIMING_CONFIG.musicFadeInMs : 0,
+      });
+    } else if (step === 'preparation') {
+      void sound.startBackgroundMusic(STEP_MUSIC_TRACKS.preparation, {
+        crossfadeMs: AUDIO_TIMING_CONFIG.musicCrossfadeMs,
+      });
+    } else if (step === 'tournament') {
+      void sound.stopBackgroundMusic({ fadeOutMs: AUDIO_TIMING_CONFIG.tournamentFadeOutMs });
+    }
+
+    previousStepRef.current = step;
+  }, [currentUser, step]);
+
   const clearProtectedState = () => {
     setStep('registration');
     setStatus(null);
@@ -123,8 +165,17 @@ function App() {
     setActiveTablePopup(null);
     setUserMenuOpen(false);
     setSettingsOpen(false);
-    lastBlindAnnouncementRef.current = null;
+    scheduleSnapshotRef.current = null;
+    playedCountdownSecondKeysRef.current.clear();
+    soundQueueRef.current = Promise.resolve();
   };
+
+  const enqueueSound = useCallback((task) => {
+    soundQueueRef.current = soundQueueRef.current
+      .then(() => task())
+      .catch((error) => console.error(error));
+    return soundQueueRef.current;
+  }, []);
 
   const getSoundManager = () => {
     if (!soundManagerRef.current) {
@@ -148,6 +199,9 @@ function App() {
       useSampleSounds: true,
       speechStyle: 'neutral',
       voicePreference: 'auto',
+      seatShowEnabled: true,
+      seatShowSpeed: 'normal',
+      seatShowVoiceEnabled: true,
     });
     setCurrentSoundLabel('Kein Sound aktiv');
     setShowTournamentTables(true);
@@ -262,20 +316,53 @@ function App() {
         setDistribution(json.distribution);
       }
 
-      if (!json?.running || !json?.currentBlind || !String(json.currentBlind).includes('/')) {
+      const statusText = String(json?.status || '');
+      const isRunning = Boolean(json?.running) && statusText === 'Turnier läuft';
+      const hasValidTimeline = Boolean(json?.currentBlind) && json?.nextItem && json.nextItem !== '—';
+      const remainingSeconds = Number(json?.remainingSeconds);
+      const previousSnapshot = scheduleSnapshotRef.current;
+
+      if (!isRunning || !hasValidTimeline || !Number.isFinite(remainingSeconds)) {
+        scheduleSnapshotRef.current = {
+          currentBlind: json?.currentBlind || null,
+          status: statusText,
+          remainingSeconds,
+        };
+        playedCountdownSecondKeysRef.current.clear();
         return;
       }
 
-      if (lastBlindAnnouncementRef.current === null) {
-        lastBlindAnnouncementRef.current = json.currentBlind;
-        return;
+      if (remainingSeconds >= 2 && remainingSeconds <= 5) {
+        const secondKey = `${json.currentBlind}|${json.nextItem}|${remainingSeconds}`;
+        if (!playedCountdownSecondKeysRef.current.has(secondKey)) {
+          playedCountdownSecondKeysRef.current.add(secondKey);
+          void enqueueSound(async () => {
+            const sound = getSoundManager();
+            await sound.playBeep();
+          });
+        }
       }
 
-      if (lastBlindAnnouncementRef.current !== json.currentBlind) {
-        lastBlindAnnouncementRef.current = json.currentBlind;
-        const sound = getSoundManager();
-        await sound.announceBlindLevelChange(json.currentBlind);
+      if (previousSnapshot && previousSnapshot.currentBlind !== json.currentBlind) {
+        playedCountdownSecondKeysRef.current.clear();
+        void enqueueSound(async () => {
+          const sound = getSoundManager();
+          await sound.playTransitionHighBeep();
+
+          if (String(json.currentBlind).toLowerCase() === 'break') {
+            const breakMinutes = Math.max(1, Math.round((Number(json.remainingSeconds) || 0) / 60));
+            await sound.speakBreakStart(breakMinutes);
+          } else {
+            await sound.speakBlindLevel(json.currentBlind);
+          }
+        });
       }
+
+      scheduleSnapshotRef.current = {
+        currentBlind: json.currentBlind,
+        status: statusText,
+        remainingSeconds,
+      };
     } catch (error) {
       if (error.message !== 'UNAUTHORIZED') {
         console.error(error);
@@ -708,6 +795,21 @@ function App() {
   const resumeTournament = async () => runTournamentAction('/api/resume');
   const endTournament = async () => runTournamentAction('/api/end');
   const markSeatOpen = async (playerName) => runTournamentAction('/api/seat-open', { playerName });
+  const markSeatOpenWithSound = async (playerName) => {
+    const success = await markSeatOpen(playerName);
+    if (!success) {
+      return false;
+    }
+
+    try {
+      const sound = getSoundManager();
+      await sound.playOneShot(SEAT_OPEN_SOUND, 'Seat Open Sound');
+    } catch (error) {
+      console.error(error);
+    }
+
+    return true;
+  };
   const addRebuy = async (playerName) => runTournamentAction('/api/rebuy', { playerName });
   const balanceTables = async () => runTournamentAction('/api/table/balance');
   const createFinalTable = async () => runTournamentAction('/api/table/final-table');
@@ -798,10 +900,42 @@ function App() {
     }
   };
 
-  const handleSeatPlacementAnnouncement = useCallback(async ({ tableNumber, seatNumber, playerName, roles }) => {
+  const handleSeatShowBefore = useCallback(async ({ playerName }) => {
+    if (!soundSettings.seatShowVoiceEnabled) {
+      return;
+    }
     try {
       const sound = getSoundManager();
-      await sound.announceSeatPlacement({ tableNumber, seatNumber, playerName, roles });
+      await sound.speak(`Next player is ${playerName}`, { lang: 'en-US' });
+    } catch (error) {
+      console.error(error);
+    }
+  }, [soundSettings]);
+
+  const handleSeatShowAfter = useCallback(async ({ tableNumber, seatNumber, playerName, roles }) => {
+    try {
+      const sound = getSoundManager();
+      if (soundSettings.seatShowVoiceEnabled) {
+        await sound.announceSeatPlacement({ tableNumber, seatNumber, playerName, roles });
+      }
+
+      const exactName = String(playerName || '').trim();
+      const mapping = specialSeatSounds.find((entry) => entry.name === exactName);
+      if (mapping?.sound) {
+        await sound.playOneShot(mapping.sound, `Spezialsound: ${exactName}`);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }, [soundSettings]);
+
+  const handleSeatShowComplete = useCallback(async () => {
+    if (!soundSettings.seatShowVoiceEnabled) {
+      return;
+    }
+    try {
+      const sound = getSoundManager();
+      await sound.speak('Please take your seats, the tournament will begin shortly!', { lang: 'en-US' });
     } catch (error) {
       console.error(error);
     }
@@ -942,6 +1076,15 @@ function App() {
               <label className="settings-toggle">
                 <input
                   type="checkbox"
+                  checked={soundSettings.seatShowVoiceEnabled}
+                  onChange={(event) => setSoundSettings((prev) => ({ ...prev, seatShowVoiceEnabled: event.target.checked }))}
+                />
+                Seat-Show Sprachansagen aktivieren
+              </label>
+
+              <label className="settings-toggle">
+                <input
+                  type="checkbox"
                   checked={soundSettings.useSampleSounds}
                   onChange={(event) => setSoundSettings((prev) => ({ ...prev, useSampleSounds: event.target.checked }))}
                 />
@@ -963,11 +1106,144 @@ function App() {
               <label className="settings-toggle">
                 <input
                   type="checkbox"
+                  checked={soundSettings.seatShowEnabled}
+                  onChange={(event) => setSoundSettings((prev) => ({ ...prev, seatShowEnabled: event.target.checked }))}
+                />
+                Cinematic Seat-Show in Tischverteilung
+              </label>
+
+              <label>
+                Seat-Show Geschwindigkeit
+                <select
+                  value={soundSettings.seatShowSpeed}
+                  onChange={(event) => setSoundSettings((prev) => ({ ...prev, seatShowSpeed: event.target.value }))}
+                >
+                  <option value="slow">Langsam</option>
+                  <option value="normal">Normal</option>
+                  <option value="fast">Schnell</option>
+                </select>
+              </label>
+
+              <label className="settings-toggle">
+                <input
+                  type="checkbox"
                   checked={showTournamentTables}
                   onChange={(event) => setShowTournamentTables(event.target.checked)}
                 />
                 Tischmanagement im Turnier anzeigen
               </label>
+            </div>
+
+            <div className="settings-group">
+              <h3 className="settings-group-title">Name → Sound-Verknüpfungen</h3>
+              <p className="settings-note">Wird ein Spieler mit exakt diesem Namen bei der Tischverteilung platziert, spielt der gewählte Sound nach der Ansage ab.</p>
+
+              {specialSeatSounds.length > 0 && (
+                <table className="sound-mapping-table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Sound</th>
+                      <th>Test</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {specialSeatSounds.map((entry, index) => (
+                      <tr key={index}>
+                        <td>
+                          <input
+                            type="text"
+                            className="sound-mapping-name-input"
+                            value={entry.name}
+                            onChange={(event) => {
+                              const updated = specialSeatSounds.map((item, i) =>
+                                i === index ? { ...item, name: event.target.value } : item
+                              );
+                              setSpecialSeatSounds(updated);
+                            }}
+                          />
+                        </td>
+                        <td>
+                          <select
+                            className="sound-mapping-select"
+                            value={entry.sound}
+                            onChange={(event) => {
+                              const updated = specialSeatSounds.map((item, i) =>
+                                i === index ? { ...item, sound: event.target.value } : item
+                              );
+                              setSpecialSeatSounds(updated);
+                            }}
+                          >
+                            {AVAILABLE_SOUND_FILES.map((file) => (
+                              <option key={file} value={`/sounds/${file}`}>{file}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            className="ghost-button ghost-button--small"
+                            onClick={() => {
+                              const sound = getSoundManager();
+                              void sound.playOneShot(entry.sound, `Vorschau: ${entry.name}`);
+                            }}
+                          >▶</button>
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            className="ghost-button ghost-button--small ghost-button--danger"
+                            onClick={() => setSpecialSeatSounds((prev) => prev.filter((_, i) => i !== index))}
+                          >✕</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+              <div className="sound-mapping-add-row">
+                <input
+                  type="text"
+                  className="sound-mapping-name-input"
+                  placeholder="Name"
+                  value={newMappingName}
+                  onChange={(event) => setNewMappingName(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && newMappingName.trim()) {
+                      setSpecialSeatSounds((prev) => [...prev, { name: newMappingName.trim(), sound: newMappingSound }]);
+                      setNewMappingName('');
+                    }
+                  }}
+                />
+                <select
+                  className="sound-mapping-select"
+                  value={newMappingSound}
+                  onChange={(event) => setNewMappingSound(event.target.value)}
+                >
+                  {AVAILABLE_SOUND_FILES.map((file) => (
+                    <option key={file} value={`/sounds/${file}`}>{file}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="ghost-button"
+                  disabled={!newMappingName.trim()}
+                  onClick={() => {
+                    setSpecialSeatSounds((prev) => [...prev, { name: newMappingName.trim(), sound: newMappingSound }]);
+                    setNewMappingName('');
+                  }}
+                >+ Hinzufügen</button>
+              </div>
+
+              <div className="settings-group-actions">
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={() => setSpecialSeatSounds(DEFAULT_SPECIAL_SEAT_SOUNDS)}
+                >Zurücksetzen</button>
+              </div>
             </div>
 
             <div className="settings-actions">
@@ -1008,7 +1284,13 @@ function App() {
           setActiveTablePopup={setActiveTablePopup}
           setStep={setStep}
           startTournament={startTournament}
-          onSeatPlaced={handleSeatPlacementAnnouncement}
+          seatShowSettings={{
+            enabled: soundSettings.seatShowEnabled,
+            speed: soundSettings.seatShowSpeed,
+          }}
+          onSeatShowBefore={handleSeatShowBefore}
+          onSeatShowAfter={handleSeatShowAfter}
+          onSeatShowComplete={handleSeatShowComplete}
         />
       )}
 
@@ -1027,7 +1309,7 @@ function App() {
           pauseTournament={pauseTournament}
           resumeTournament={resumeTournament}
           endTournament={endTournament}
-          markSeatOpen={markSeatOpen}
+          markSeatOpen={markSeatOpenWithSound}
           addRebuy={addRebuy}
           balanceTables={balanceTables}
           createFinalTable={createFinalTable}

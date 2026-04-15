@@ -4,6 +4,27 @@
   gap: 16px;
 }
 
+.showHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(86, 120, 102, 0.75);
+  border-radius: 12px;
+  background: rgba(8, 38, 25, 0.7);
+  margin-bottom: 12px;
+}
+
+.showHead strong {
+  color: #d6ac57;
+}
+
+.showHead span {
+  color: #d0d7c1;
+  font-size: 13px;
+}
+
 .distributionCard {
   border: 1px solid rgba(70, 106, 87, 0.9);
   border-radius: 16px;

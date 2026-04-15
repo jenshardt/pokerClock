@@ -28,3 +28,32 @@ export const initialForm = {
   participantsText: 'Alice\nBob\nChris\nDave\nEve\nFrank',
   blindLevels: DEFAULT_BLIND_LEVELS,
 };
+
+export const STEP_MUSIC_TRACKS = {
+  registration: '/sounds/Happy.mp3',
+  preparation: '/sounds/Tischverteilung.mp3',
+};
+
+export const AUDIO_TIMING_CONFIG = {
+  musicCrossfadeMs: 1800,
+  musicFadeInMs: 1200,
+  tournamentFadeOutMs: 1000,
+};
+
+export const AVAILABLE_SOUND_FILES = [
+  'Boom1.mp3',
+  'Boom2.mp3',
+  'Happy.mp3',
+  'LouisDesFunes.mp3',
+  'Tadaa.mp3',
+  'Tischverteilung.mp3',
+  'Tusch.mp3',
+  'WompWompWomp.mp3',
+];
+
+export const DEFAULT_SPECIAL_SEAT_SOUNDS = [
+  { name: 'Chris', sound: '/sounds/Tusch.mp3' },
+  { name: 'Jens', sound: '/sounds/LouisDesFunes.mp3' },
+];
+
+export const SEAT_OPEN_SOUND = '/sounds/WompWompWomp.mp3';

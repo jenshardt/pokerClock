@@ -22,9 +22,13 @@ function parseBlindPair(blindText) {
 
 export function createSoundManager() {
   let audioContext = null;
+  let musicAudio = null;
+  let musicFadeIntervalId = null;
+  let duckCounter = 0;
   let settings = {
     muted: false,
     beepVolume: 1,
+    musicVolume: 0.38,
     speechEnabled: true,
     useSampleSounds: true,
     speechStyle: 'neutral',
@@ -37,6 +41,7 @@ export function createSoundManager() {
       ...settings,
       ...next,
       beepVolume: clamp(Number(next?.beepVolume ?? settings.beepVolume), 0, 1),
+      musicVolume: clamp(Number(next?.musicVolume ?? settings.musicVolume), 0, 1),
       useSampleSounds: next?.useSampleSounds ?? settings.useSampleSounds,
       speechStyle: next?.speechStyle === 'commentator' ? 'commentator' : 'neutral',
       voicePreference: next?.voicePreference === 'male'
@@ -48,6 +53,143 @@ export function createSoundManager() {
         ? next.onNowPlayingChange
         : settings.onNowPlayingChange,
     };
+
+    if (musicAudio) {
+      updateMusicVolume();
+    }
+  };
+
+  const getMusicTargetVolume = () => {
+    if (settings.muted) {
+      return 0;
+    }
+
+    const duckFactor = duckCounter > 0 ? 0.35 : 1;
+    return clamp(settings.musicVolume * duckFactor, 0, 1);
+  };
+
+  const clearMusicFade = () => {
+    if (musicFadeIntervalId !== null) {
+      window.clearInterval(musicFadeIntervalId);
+      musicFadeIntervalId = null;
+    }
+  };
+
+  const updateMusicVolume = () => {
+    if (!musicAudio) {
+      return;
+    }
+    musicAudio.volume = getMusicTargetVolume();
+  };
+
+  const fadeAudioVolume = (audio, toVolume, durationMs = 1000) => new Promise((resolve) => {
+    if (!audio) {
+      resolve();
+      return;
+    }
+
+    const safeDuration = Math.max(1, Number(durationMs) || 1);
+    const fromVolume = Number.isFinite(audio.volume) ? audio.volume : 0;
+    const target = clamp(toVolume, 0, 1);
+
+    if (safeDuration <= 30) {
+      audio.volume = target;
+      resolve();
+      return;
+    }
+
+    const start = Date.now();
+    const tickMs = 40;
+    const timerId = window.setInterval(() => {
+      const elapsed = Date.now() - start;
+      const progress = clamp(elapsed / safeDuration, 0, 1);
+      audio.volume = fromVolume + ((target - fromVolume) * progress);
+      if (progress >= 1) {
+        window.clearInterval(timerId);
+        resolve();
+      }
+    }, tickMs);
+  });
+
+  const withMusicDuck = async (action) => {
+    duckCounter += 1;
+    updateMusicVolume();
+    try {
+      return await action();
+    } finally {
+      duckCounter = Math.max(0, duckCounter - 1);
+      updateMusicVolume();
+    }
+  };
+
+  const createLoopAudio = (url) => {
+    const audio = new Audio(url);
+    audio.preload = 'auto';
+    audio.loop = true;
+    audio.volume = 0;
+    return audio;
+  };
+
+  const startBackgroundMusic = async (url, options = {}) => {
+    if (!url) {
+      return;
+    }
+
+    const fadeInMs = Math.max(0, Number(options.fadeInMs) || 0);
+    const crossfadeMs = Math.max(0, Number(options.crossfadeMs) || 0);
+    const nextTrack = createLoopAudio(url);
+    const targetVolume = getMusicTargetVolume();
+
+    try {
+      await nextTrack.play();
+    } catch {
+      return;
+    }
+
+    if (musicAudio && crossfadeMs > 0) {
+      const previous = musicAudio;
+      musicAudio = nextTrack;
+      await Promise.all([
+        fadeAudioVolume(nextTrack, targetVolume, crossfadeMs),
+        fadeAudioVolume(previous, 0, crossfadeMs),
+      ]);
+      previous.pause();
+      previous.currentTime = 0;
+      return;
+    }
+
+    if (musicAudio) {
+      musicAudio.pause();
+      musicAudio.currentTime = 0;
+    }
+
+    musicAudio = nextTrack;
+    if (fadeInMs > 0) {
+      await fadeAudioVolume(musicAudio, targetVolume, fadeInMs);
+      return;
+    }
+
+    updateMusicVolume();
+  };
+
+  const stopBackgroundMusic = async ({ fadeOutMs = 1000 } = {}) => {
+    if (!musicAudio) {
+      return;
+    }
+
+    clearMusicFade();
+    const current = musicAudio;
+    if (fadeOutMs > 0) {
+      await fadeAudioVolume(current, 0, fadeOutMs);
+    } else {
+      current.volume = 0;
+    }
+    current.pause();
+    current.currentTime = 0;
+
+    if (musicAudio === current) {
+      musicAudio = null;
+    }
   };
 
   const MALE_VOICE_KEYWORDS = [
@@ -112,56 +254,58 @@ export function createSoundManager() {
     }
   };
 
-  const playSample = async (url, expectedDurationMs, volume = 1, label = 'Audio-Sample') => {
+  const playSample = async (url, expectedDurationMs, volume = 1, label = 'Audio-Sample', timeoutMs = null) => {
     if (settings.muted || !settings.useSampleSounds) {
       return false;
     }
 
     try {
-      setNowPlaying(label);
-      await new Promise((resolve, reject) => {
-        const audio = new Audio(url);
-        audio.preload = 'auto';
-        audio.volume = clamp(volume * settings.beepVolume, 0, 1);
-        let settled = false;
-        let timeoutId = null;
+      await withMusicDuck(async () => {
+        setNowPlaying(label);
+        await new Promise((resolve, reject) => {
+          const audio = new Audio(url);
+          audio.preload = 'auto';
+          audio.volume = clamp(volume * settings.beepVolume, 0, 1);
+          let settled = false;
+          let timeoutId = null;
 
-        const cleanup = () => {
-          audio.onended = null;
-          audio.onerror = null;
-          audio.oncanplaythrough = null;
-          if (timeoutId !== null) {
-            window.clearTimeout(timeoutId);
-            timeoutId = null;
-          }
-        };
+          const cleanup = () => {
+            audio.onended = null;
+            audio.onerror = null;
+            audio.oncanplaythrough = null;
+            if (timeoutId !== null) {
+              window.clearTimeout(timeoutId);
+              timeoutId = null;
+            }
+          };
 
-        const finish = (callback) => {
-          if (settled) {
-            return;
-          }
-          settled = true;
-          cleanup();
-          callback();
-        };
+          const finish = (callback) => {
+            if (settled) {
+              return;
+            }
+            settled = true;
+            cleanup();
+            callback();
+          };
 
-        audio.onended = () => {
-          finish(resolve);
-        };
+          audio.onended = () => {
+            finish(resolve);
+          };
 
-        audio.onerror = () => {
-          finish(() => reject(new Error(`Sample konnte nicht geladen werden: ${url}`)));
-        };
+          audio.onerror = () => {
+            finish(() => reject(new Error(`Sample konnte nicht geladen werden: ${url}`)));
+          };
 
-        audio.oncanplaythrough = () => {
-          audio.play().catch((error) => finish(() => reject(error)));
-        };
+          audio.oncanplaythrough = () => {
+            audio.play().catch((error) => finish(() => reject(error)));
+          };
 
-        timeoutId = window.setTimeout(() => {
-          finish(() => reject(new Error(`Sample Timeout: ${url}`)));
-        }, Math.max(2500, expectedDurationMs + 1200));
+          timeoutId = window.setTimeout(() => {
+            finish(() => reject(new Error(`Sample Timeout: ${url}`)));
+          }, timeoutMs ?? Math.max(4500, expectedDurationMs + 2200));
 
-        audio.load();
+          audio.load();
+        });
       });
 
       setNowPlaying('Kein Sound aktiv');
@@ -194,29 +338,31 @@ export function createSoundManager() {
       return;
     }
 
-    setNowPlaying(label);
+    await withMusicDuck(async () => {
+      setNowPlaying(label);
 
-    const ctx = await getContext();
-    const oscillator = ctx.createOscillator();
-    const gain = ctx.createGain();
+      const ctx = await getContext();
+      const oscillator = ctx.createOscillator();
+      const gain = ctx.createGain();
 
-    oscillator.type = type;
-    oscillator.frequency.value = frequency;
+      oscillator.type = type;
+      oscillator.frequency.value = frequency;
 
-    const finalVolume = clamp(volume * settings.beepVolume, 0, 1);
+      const finalVolume = clamp(volume * settings.beepVolume, 0, 1);
 
-    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(finalVolume, ctx.currentTime + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + (durationMs / 1000));
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(finalVolume, ctx.currentTime + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + (durationMs / 1000));
 
-    oscillator.connect(gain);
-    gain.connect(ctx.destination);
+      oscillator.connect(gain);
+      gain.connect(ctx.destination);
 
-    oscillator.start();
-    oscillator.stop(ctx.currentTime + (durationMs / 1000) + 0.02);
+      oscillator.start();
+      oscillator.stop(ctx.currentTime + (durationMs / 1000) + 0.02);
 
-    await wait(durationMs + 25);
-    setNowPlaying('Kein Sound aktiv');
+      await wait(durationMs + 25);
+      setNowPlaying('Kein Sound aktiv');
+    });
   };
 
   const playBeep = async () => {
@@ -226,9 +372,16 @@ export function createSoundManager() {
     }
   };
 
+  const playTransitionHighBeep = async () => {
+    const playedHigh = await playSample(SAMPLE_PATHS.beepHigh, 950, 0.95, 'Hoher Beep (Stufenwechsel)');
+    if (!playedHigh) {
+      await playTone(1480, 950, 'square', 0.1, 'Hoher Beep (Stufenwechsel)');
+    }
+  };
+
   const playBlindStageTransition = async () => {
     // 5 seconds total: 0.5s beep + 0.5s pause, repeated 5 times.
-    for (let i = 0; i < 5; i += 1) {
+    for (let i = 0; i < 4; i += 1) {
       const cycleStart = Date.now();
       await playBeep();
       const elapsed = Date.now() - cycleStart;
@@ -237,11 +390,8 @@ export function createSoundManager() {
       }
     }
 
-    // Stage start indicator: higher, longer beep.
-    const playedHigh = await playSample(SAMPLE_PATHS.beepHigh, 2000, 0.95, 'Hoher Beep (Stufenstart)');
-    if (!playedHigh) {
-      await playTone(1480, 2000, 'square', 0.1, 'Hoher Beep (Stufenstart)');
-    }
+    // Stage start indicator at transition.
+    await playTransitionHighBeep();
   };
 
   const playBeepSeries = async (count = 5, gapMs = 220) => {
@@ -277,25 +427,27 @@ export function createSoundManager() {
       return;
     }
 
-    setNowPlaying(`Sprachansage: ${text}`);
-    window.speechSynthesis.cancel();
-    const lang = options.lang || 'de-DE';
-    const voices = await getSpeechVoices();
-    const voice = pickVoiceByPreference(voices, lang, settings.voicePreference);
+    await withMusicDuck(async () => {
+      setNowPlaying(`Sprachansage: ${text}`);
+      window.speechSynthesis.cancel();
+      const lang = options.lang || 'de-DE';
+      const voices = await getSpeechVoices();
+      const voice = pickVoiceByPreference(voices, lang, settings.voicePreference);
 
-    await new Promise((resolve) => {
-      const utterance = new window.SpeechSynthesisUtterance(text);
-      utterance.lang = lang;
-      if (voice) {
-        utterance.voice = voice;
-      }
-      utterance.rate = options.rate ?? 1;
-      utterance.pitch = options.pitch ?? 1;
-      utterance.onend = () => resolve();
-      utterance.onerror = () => resolve();
-      window.speechSynthesis.speak(utterance);
+      await new Promise((resolve) => {
+        const utterance = new window.SpeechSynthesisUtterance(text);
+        utterance.lang = lang;
+        if (voice) {
+          utterance.voice = voice;
+        }
+        utterance.rate = options.rate ?? 1;
+        utterance.pitch = options.pitch ?? 1;
+        utterance.onend = () => resolve();
+        utterance.onerror = () => resolve();
+        window.speechSynthesis.speak(utterance);
+      });
+      setNowPlaying('Kein Sound aktiv');
     });
-    setNowPlaying('Kein Sound aktiv');
   };
 
   const speakPlayerName = async (name) => {
@@ -320,6 +472,12 @@ export function createSoundManager() {
     }
 
     await speak(`The blinds are now ${blindText}`, { lang: 'en-US' });
+  };
+
+  const speakBreakStart = async (minutes) => {
+    const safeMinutes = Math.max(1, Number(minutes) || 1);
+    const minuteWord = safeMinutes === 1 ? 'minute' : 'minutes';
+    await speak(`We're going to take a ${safeMinutes} ${minuteWord} break now`, { lang: 'en-US' });
   };
 
   const announceBlindLevelChange = async (blindText) => {
@@ -363,10 +521,74 @@ export function createSoundManager() {
     }
   };
 
+  const playOneShot = async (url, label = 'Soundeffekt') => {
+    if (!url) {
+      return false;
+    }
+
+    if (settings.muted) {
+      return false;
+    }
+
+    try {
+      await withMusicDuck(async () => {
+        setNowPlaying(label);
+        await new Promise((resolve, reject) => {
+          const audio = new Audio(url);
+          audio.preload = 'auto';
+          audio.volume = clamp(0.95 * settings.beepVolume, 0, 1);
+          let settled = false;
+          let timeoutId = null;
+
+          const cleanup = () => {
+            audio.onended = null;
+            audio.onerror = null;
+            audio.oncanplaythrough = null;
+            if (timeoutId !== null) {
+              window.clearTimeout(timeoutId);
+              timeoutId = null;
+            }
+          };
+
+          const finish = (callback) => {
+            if (settled) {
+              return;
+            }
+            settled = true;
+            cleanup();
+            callback();
+          };
+
+          audio.onended = () => finish(resolve);
+          audio.onerror = () => finish(() => reject(new Error(`Audio konnte nicht geladen werden: ${url}`)));
+          audio.oncanplaythrough = () => {
+            audio.play().catch((error) => finish(() => reject(error)));
+          };
+
+          timeoutId = window.setTimeout(() => {
+            finish(() => reject(new Error(`Audio Timeout: ${url}`)));
+          }, 15000);
+
+          audio.load();
+        });
+      });
+
+      setNowPlaying('Kein Sound aktiv');
+      return true;
+    } catch {
+      setNowPlaying('Kein Sound aktiv');
+      return false;
+    }
+  };
+
   return {
     setSettings,
     wait,
+    startBackgroundMusic,
+    stopBackgroundMusic,
+    playOneShot,
     playBeep,
+    playTransitionHighBeep,
     playBlindStageTransition,
     playBeepSeries,
     playFanfare,
@@ -375,6 +597,7 @@ export function createSoundManager() {
     announceSeatPlacement,
     announceBlindLevelChange,
     speakBlindLevel,
+    speakBreakStart,
     runDemo,
   };
 }

@@ -200,6 +200,90 @@ p {
   margin-top: 8px;
 }
 
+.sound-mapping-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0 14px;
+  font-size: 13px;
+}
+
+.sound-mapping-table th {
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #d6ac57;
+  padding: 0 6px 4px;
+  border-bottom: 1px solid rgba(214, 172, 87, 0.25);
+}
+
+.sound-mapping-table td {
+  padding: 4px 6px;
+  vertical-align: middle;
+}
+
+.sound-mapping-table tr + tr td {
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.sound-mapping-name-input {
+  width: 100%;
+  min-width: 90px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(214, 172, 87, 0.3);
+  border-radius: 5px;
+  color: #e9eddc;
+  padding: 4px 7px;
+  font-size: 13px;
+}
+
+.sound-mapping-name-input:focus {
+  outline: none;
+  border-color: rgba(214, 172, 87, 0.7);
+}
+
+.sound-mapping-select {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(214, 172, 87, 0.3);
+  border-radius: 5px;
+  color: #e9eddc;
+  padding: 4px 6px;
+  font-size: 13px;
+}
+
+.sound-mapping-add-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.sound-mapping-add-row .sound-mapping-name-input {
+  flex: 1 1 90px;
+  min-width: 80px;
+}
+
+.sound-mapping-add-row .sound-mapping-select {
+  flex: 2 1 140px;
+}
+
+.ghost-button--small {
+  padding: 2px 7px;
+  font-size: 12px;
+  min-width: 28px;
+}
+
+.ghost-button--danger {
+  color: #e06050;
+  border-color: rgba(220, 80, 60, 0.4);
+}
+
+.ghost-button--danger:hover {
+  background: rgba(220, 80, 60, 0.12);
+  border-color: rgba(220, 80, 60, 0.7);
+}
+
 .settings-toggle {
   display: flex;
   align-items: center;

@@ -70,6 +70,7 @@ export default function TableDistributionBoard({
   activeTablePopup,
   setActiveTablePopup,
   seatStatuses = {},
+  showSeatCard,
   onSeatSelect,
   selectedPlayerName,
   showRoleMarkers = true,
@@ -114,17 +115,19 @@ export default function TableDistributionBoard({
 
             {seatLayouts[tableIndex].map((seat, index) => {
               const { isDealerSeat, isSmallBlindSeat, isBigBlindSeat } = getSeatRoles(table, seat);
-              const hasRoleMarker = showRoleMarkers && (isDealerSeat || isSmallBlindSeat || isBigBlindSeat);
+              const seatId = `${tableIndex}-${index}-${seat.player}`;
+              const seatStatus = seatStatuses[seatId] || seatStatuses[seat.player] || (seat.isNeutralDealer ? 'neutral' : 'active');
+              const markerAllowed = showRoleMarkers && seatStatus !== 'pending';
+              const hasRoleMarker = markerAllowed && (isDealerSeat || isSmallBlindSeat || isBigBlindSeat);
               const markerPosition = getMarkerPosition(seat.angle);
               const globalSeatIndex = seatStartOffsets[tableIndex] + index;
               const seatDelayMs = 240 + (globalSeatIndex * sequenceIntervalMs);
               const markerDelayMs = seatDelayMs + 1700;
-              const seatStatus = seatStatuses[seat.player] || (seat.isNeutralDealer ? 'neutral' : 'active');
               const isSelected = selectedPlayerName && selectedPlayerName === seat.player;
 
               return (
                 <div key={`${table.tableName}-${seat.player}-${index}`}>
-                  {showRoleMarkers && isDealerSeat && (
+                  {markerAllowed && isDealerSeat && (
                     <span
                       className={`${styles.tableMarker} ${styles.markerDealer} ${animate ? styles.markerPop : ''}`}
                       style={{ left: `${markerPosition.x}%`, top: `${markerPosition.y}%`, animationDelay: `${markerDelayMs}ms` }}
@@ -132,7 +135,7 @@ export default function TableDistributionBoard({
                       Dealer
                     </span>
                   )}
-                  {showRoleMarkers && isSmallBlindSeat && (
+                  {markerAllowed && isSmallBlindSeat && (
                     <span
                       className={`${styles.tableMarker} ${styles.markerSb} ${animate ? styles.markerPop : ''}`}
                       style={{ left: `${markerPosition.x}%`, top: `${markerPosition.y}%`, animationDelay: `${markerDelayMs}ms` }}
@@ -140,7 +143,7 @@ export default function TableDistributionBoard({
                       Small Blind
                     </span>
                   )}
-                  {showRoleMarkers && isBigBlindSeat && (
+                  {markerAllowed && isBigBlindSeat && (
                     <span
                       className={`${styles.tableMarker} ${styles.markerBb} ${animate ? styles.markerPop : ''}`}
                       style={{ left: `${markerPosition.x}%`, top: `${markerPosition.y}%`, animationDelay: `${markerDelayMs}ms` }}
@@ -158,6 +161,7 @@ export default function TableDistributionBoard({
                       isSmallBlindSeat && styles.sbSeat,
                       isBigBlindSeat && styles.bbSeat,
                       seat.isNeutralDealer && styles.neutralSeat,
+                      seatStatus === 'pending' && styles.pendingSeat,
                       seatStatus === 'eliminated' && styles.eliminatedSeat,
                       onSeatSelect && !seat.isNeutralDealer && styles.clickableSeat,
                       isSelected && styles.selectedSeat,
@@ -194,6 +198,25 @@ export default function TableDistributionBoard({
                 </div>
               );
             })}
+
+            {showSeatCard && showSeatCard.tableIndex === tableIndex && (
+              <div
+                className={[
+                  styles.seatShowCard,
+                  showSeatCard.phase === 'focus' && styles.seatShowFocus,
+                  showSeatCard.phase === 'fly' && styles.seatShowFly,
+                ].filter(Boolean).join(' ')}
+                style={{
+                  left: `${showSeatCard.targetX}%`,
+                  top: `${showSeatCard.targetY}%`,
+                  '--seat-show-dx': `${(showSeatCard.originX ?? 50) - showSeatCard.targetX}`,
+                  '--seat-show-dy': `${(showSeatCard.originY ?? 48) - showSeatCard.targetY}`,
+                  '--seat-show-fly-ms': `${showSeatCard.flyDurationMs || 1400}ms`,
+                }}
+              >
+                <strong>{showSeatCard.playerName}</strong>
+              </div>
+            )}
           </div>
 
           {activeTablePopup === table.tableName && (

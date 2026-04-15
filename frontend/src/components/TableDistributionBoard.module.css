@@ -192,6 +192,11 @@
   box-shadow: 0 0 0 3px rgba(214, 172, 87, 0.45);
 }
 
+.pendingSeat {
+  opacity: 0;
+  visibility: hidden;
+}
+
 .eliminatedSeat {
   background: rgba(57, 22, 22, 0.92);
   border-color: rgba(209, 104, 104, 0.72);
@@ -209,6 +214,39 @@
 .eliminatedName {
   color: #ffd5d5;
   text-decoration: line-through;
+}
+
+.seatShowCard {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border-radius: 14px;
+  border: 2px solid rgba(214, 172, 87, 0.86);
+  background: rgba(12, 27, 18, 0.96);
+  box-shadow: 0 16px 26px rgba(0, 0, 0, 0.5);
+  color: #fff7e5;
+  padding: 14px 20px;
+  z-index: 8;
+  pointer-events: none;
+}
+
+.seatShowCard strong {
+  display: block;
+  white-space: nowrap;
+  font-size: 20px;
+  letter-spacing: 0.01em;
+}
+
+.seatShowFocus {
+  transform: translate(
+      calc(-50% + (var(--seat-show-dx) * 1%)),
+      calc(-50% + (var(--seat-show-dy) * 1%))
+    )
+    scale(3.4);
+}
+
+.seatShowFly {
+  transform: translate(-50%, -50%) scale(1);
+  transition: transform var(--seat-show-fly-ms) cubic-bezier(0.18, 0.8, 0.2, 1);
 }
 
 .tablePopup {
