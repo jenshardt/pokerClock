@@ -47,6 +47,14 @@ function buildQueue(distribution) {
     });
   });
 
+  // Keep seat assignment fixed, but randomize the introduction order.
+  for (let index = queue.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    const temp = queue[index];
+    queue[index] = queue[swapIndex];
+    queue[swapIndex] = temp;
+  }
+
   return queue;
 }
 

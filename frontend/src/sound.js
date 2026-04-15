@@ -28,7 +28,7 @@ export function createSoundManager() {
   let settings = {
     muted: false,
     beepVolume: 1,
-    musicVolume: 0.38,
+    musicVolume: 0.22,
     speechEnabled: true,
     useSampleSounds: true,
     speechStyle: 'neutral',
@@ -64,7 +64,7 @@ export function createSoundManager() {
       return 0;
     }
 
-    const duckFactor = duckCounter > 0 ? 0.35 : 1;
+    const duckFactor = duckCounter > 0 ? 0.6 : 1;
     return clamp(settings.musicVolume * duckFactor, 0, 1);
   };
 
@@ -113,12 +113,16 @@ export function createSoundManager() {
 
   const withMusicDuck = async (action) => {
     duckCounter += 1;
-    updateMusicVolume();
+    if (musicAudio) {
+      void fadeAudioVolume(musicAudio, getMusicTargetVolume(), 350);
+    }
     try {
       return await action();
     } finally {
       duckCounter = Math.max(0, duckCounter - 1);
-      updateMusicVolume();
+      if (musicAudio) {
+        void fadeAudioVolume(musicAudio, getMusicTargetVolume(), 600);
+      }
     }
   };
 
@@ -508,7 +512,7 @@ export function createSoundManager() {
       roleSentence = ` ${joined}.`;
     }
 
-    await speak(`At table ${tableNumber}, seat ${seatNumber}: ${name}.${roleSentence}`, { lang: 'en-US' });
+    await speak(`At table ${tableNumber}, seat ${seatNumber}.${roleSentence}`, { lang: 'en-US' });
   };
 
   const runDemo = async () => {

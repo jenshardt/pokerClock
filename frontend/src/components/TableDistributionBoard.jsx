@@ -79,6 +79,7 @@ export default function TableDistributionBoard({
   compact = false,
 }) {
   const seatLayouts = useMemo(() => getSeatLayouts(distribution), [distribution]);
+  const isSingleTable = distribution.length === 1;
 
   const seatStartOffsets = useMemo(() => {
     let runningCount = 0;
@@ -90,12 +91,29 @@ export default function TableDistributionBoard({
   }, [seatLayouts]);
 
   return (
-    <div className={`${styles.distributionGrid} ${compact ? styles.compactGrid : ''}`}>
+    <div
+      className={[
+        styles.distributionGrid,
+        compact && styles.compactGrid,
+        isSingleTable && styles.singleTableGrid,
+      ].filter(Boolean).join(' ')}
+    >
       {distribution.map((table, tableIndex) => (
-        <article key={table.tableName} className={`${styles.distributionCard} ${compact ? styles.compactCard : ''}`}>
+        <article
+          key={table.tableName}
+          className={[
+            styles.distributionCard,
+            compact && styles.compactCard,
+            isSingleTable && styles.singleTableCard,
+          ].filter(Boolean).join(' ')}
+        >
           <h3 className={styles.tableTitle}>{table.tableName}</h3>
           <div
-            className={`${styles.pokerTableWrap} ${compact ? styles.compactWrap : ''}`}
+            className={[
+              styles.pokerTableWrap,
+              compact && styles.compactWrap,
+              isSingleTable && styles.singleTableWrap,
+            ].filter(Boolean).join(' ')}
             onClick={() => setActiveTablePopup?.((prev) => prev === table.tableName ? null : table.tableName)}
             role="button"
             tabIndex={0}
@@ -106,7 +124,13 @@ export default function TableDistributionBoard({
               }
             }}
           >
-            <div className={`${styles.pokerTableHorizontal} ${animate ? styles.tableEnter : ''}`} />
+            <div
+              className={[
+                styles.pokerTableHorizontal,
+                animate && styles.tableEnter,
+                isSingleTable && styles.singleTableHorizontal,
+              ].filter(Boolean).join(' ')}
+            />
             <div className={`${styles.cardStack} ${animate ? styles.tableEnter : ''}`} aria-hidden="true">
               <span className={`${styles.playCard} ${styles.cardA}`} />
               <span className={`${styles.playCard} ${styles.cardB}`} />

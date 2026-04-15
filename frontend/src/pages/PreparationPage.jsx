@@ -80,15 +80,8 @@ export default function PreparationPage({
       return null;
     }
 
-    const tableCount = distribution.length;
-    const isTwoColumnLayout = tableCount > 1;
-    let originX = 50;
-    let originY = 48;
-
-    if (isTwoColumnLayout) {
-      originX = activeSeat.tableIndex % 2 === 0 ? 132 : -32;
-      originY = 50;
-    }
+    const originX = 50;
+    const originY = 50;
 
     return {
       tableIndex: activeSeat.tableIndex,
@@ -101,7 +94,7 @@ export default function PreparationPage({
       phase,
       flyDurationMs: speedProfile.flyMs,
     };
-  }, [showEnabled, activeSeat, phase, seatLayouts, speedProfile.flyMs, distribution.length]);
+  }, [showEnabled, activeSeat, phase, seatLayouts, speedProfile.flyMs]);
 
   const progressText = showEnabled
     ? `Player presentation: ${progress.placed}/${progress.total}`

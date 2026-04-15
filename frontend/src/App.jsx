@@ -41,6 +41,7 @@ function App() {
   const [soundSettings, setSoundSettings] = useState({
     muted: false,
     beepVolume: 1,
+    musicVolume: 0.22,
     speechEnabled: true,
     useSampleSounds: true,
     speechStyle: 'neutral',
@@ -195,6 +196,7 @@ function App() {
     setSoundSettings({
       muted: false,
       beepVolume: 1,
+      musicVolume: 0.22,
       speechEnabled: true,
       useSampleSounds: true,
       speechStyle: 'neutral',
@@ -1038,6 +1040,18 @@ function App() {
                   step="0.05"
                   value={soundSettings.beepVolume}
                   onChange={(event) => setSoundSettings((prev) => ({ ...prev, beepVolume: Number(event.target.value) }))}
+                />
+              </label>
+
+              <label>
+                Musik-Lautstärke: {Math.round((soundSettings.musicVolume ?? 0.22) * 100)}%
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={soundSettings.musicVolume ?? 0.22}
+                  onChange={(event) => setSoundSettings((prev) => ({ ...prev, musicVolume: Number(event.target.value) }))}
                 />
               </label>
 
