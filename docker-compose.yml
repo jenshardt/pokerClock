@@ -6,8 +6,6 @@ services:
       POSTGRES_DB: pokerclock
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
-    ports:
-      - 5432:5432
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
@@ -35,7 +33,7 @@ services:
       - db
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8081/actuator/health || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5

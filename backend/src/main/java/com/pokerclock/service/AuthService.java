@@ -7,14 +7,20 @@ import com.pokerclock.repository.AppUserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import org.springframework.scheduling.annotation.Scheduled;
+
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class AuthService {
+
+    static final Duration SESSION_TTL = Duration.ofHours(8);
 
     private static final Set<String> ALLOWED_ROLES = Set.of("ADMIN", "ORGANIZER");
 
@@ -51,7 +57,17 @@ public class AuthService {
         if (session == null || !ALLOWED_ROLES.contains(session.role())) {
             return Optional.empty();
         }
+        if (Duration.between(session.authenticatedAt(), Instant.now()).compareTo(SESSION_TTL) > 0) {
+            sessions.remove(token);
+            return Optional.empty();
+        }
         return Optional.of(session);
+    }
+
+    @Scheduled(fixedRate = 30, timeUnit = TimeUnit.MINUTES)
+    void purgeExpiredSessions() {
+        Instant cutoff = Instant.now().minus(SESSION_TTL);
+        sessions.entrySet().removeIf(e -> e.getValue().authenticatedAt().isBefore(cutoff));
     }
 
     public void logout(String token) {

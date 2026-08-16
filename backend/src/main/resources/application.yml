@@ -14,10 +14,12 @@ spring:
     allow-bean-definition-overriding: true
 
 management:
+  server:
+    port: 8081
   endpoints:
     web:
       exposure:
         include: health,info
   endpoint:
     health:
-      show-details: always
+      show-details: when-authorized
