@@ -11,12 +11,13 @@ Eine auf **Spring Boot** + **React** basierende Webanwendung zur digitalen Vorbe
 3. [Projekt-Struktur](#-projekt-struktur)
 4. [Build & Entwicklung](#-build--entwicklung)
 5. [Docker: Build, Deploy & Start](#-docker-build-deploy--start)
-6. [Screenshots der Anwendung](#-screenshots-der-anwendung)
-7. [Funktionen & Features](#-funktionen--features)
-8. [Exemplarischer Turnierablauf](#-exemplarischer-turnierablauf)
-9. [Beiträge & Änderungswünsche](#beiträge--änderungswünsche)
-10. [Lizenz](#lizenz)
-11. [Haftungsausschluss](#haftungsausschluss)
+6. [Raspberry Pi & Android-PWA MVP](#-raspberry-pi--android-pwa-mvp)
+7. [Screenshots der Anwendung](#-screenshots-der-anwendung)
+8. [Funktionen & Features](#-funktionen--features)
+9. [Exemplarischer Turnierablauf](#-exemplarischer-turnierablauf)
+10. [Beiträge & Änderungswünsche](#beiträge--änderungswünsche)
+11. [Lizenz](#lizenz)
+12. [Haftungsausschluss](#haftungsausschluss)
 
 ---
 
@@ -213,6 +214,47 @@ mvn clean package -DskipTests
 
 ### Logs in Docker Desktop
 - Klick auf einen Service → **Logs** Tab → Echtzeit-Ausgabe
+
+---
+
+## Raspberry Pi & Android-PWA MVP
+
+Dieser Abschnitt beschreibt die beschlossene, noch umzusetzende Erweiterung. PokerClock soll auf einem Raspberry Pi 5 mit 64-Bit-Raspberry-Pi-OS im Heimnetz unter `http://pokerclock.local` laufen. Die Android-Steuerung wird zunächst als installierbare Progressive Web App (PWA) umgesetzt: Sie verwendet dieselbe React-Anwendung und dieselbe Backend-API wie der Browser und benötigt weder einen App Store noch einen kostenpflichtigen Dienst.
+
+### Zieltopologie
+
+- Der auf dem Raspberry Pi installierte System-Nginx belegt den externen Port 80 und routet `pokerclock.local` zum PokerClock-Frontend.
+- Docker Compose veröffentlicht ausschließlich das Frontend auf einem lokalen Loopback-Port, zum Beispiel `127.0.0.1:3000`.
+- Frontend, Backend und PostgreSQL kommunizieren im privaten Compose-Netz. Backend, Management-Port und Datenbank werden nicht direkt im Heimnetz veröffentlicht.
+- Die Namensauflösung von `pokerclock.local` erfolgt per mDNS/Avahi über den Hostnamen des Raspberry Pi. Der Nginx Reverse Proxy ersetzt diese Namensauflösung nicht.
+
+```text
+Laptop oder Android-PWA
+   |
+http://pokerclock.local
+   |
+System-Nginx auf dem Raspberry Pi
+   |
+127.0.0.1:3000 -> Frontend-Nginx -> /api -> Spring Boot -> PostgreSQL
+```
+
+### Umsetzungsschritte
+
+1. **Raspberry-Pi-Deployment validieren:** Docker Compose v2 und die 64-Bit-ARM-Architektur prüfen; Backend- und Frontend-Images mit `linux/arm64` bauen und auf dem Pi starten.
+2. **Compose für System-Nginx vorbereiten:** Nur den Frontend-Port an `127.0.0.1` binden, externe Portfreigaben für Backend und Datenbank entfernen, Healthchecks und persistentes PostgreSQL-Volume prüfen. Der System-Nginx erhält einen Virtual Host für `pokerclock.local` und leitet die Forwarded-Header weiter.
+3. **Server als Quelle des Turnierzustands etablieren:** Die Phasen Registrierung, Vorbereitung, bereit, läuft, pausiert und beendet im Backend persistieren. Die Tischverteilung wird ausschließlich serverseitig erzeugt und vom Client gelesen.
+4. **Parallele Bedienung absichern:** Das Turnier erhält eine Versionsnummer; jede schreibende Aktion wird transaktional ausgeführt und prüft die erwartete Version. Bei einem veralteten Zustand antwortet das Backend mit `409 Conflict` und die Clients laden den Status erneut.
+5. **Browser auf geteilten Zustand umstellen:** React leitet die sichtbare Phase aus dem Serverstatus ab und aktualisiert Status und Tischverteilung auch während der Vorbereitung. Der Browser bleibt dabei ein Client ohne fachlich maßgeblichen lokalen Zustand.
+6. **PWA installierbar machen:** Web-App-Manifest, Icons und Service Worker ergänzen. Android-Nutzende können die Anwendung danach über einen kompatiblen Browser installieren und wie eine eigene App starten.
+7. **Mobile Turniersteuerung liefern:** Für kleine Displays eine fokussierte Ansicht mit Uhr, Blindstufen, Spielerzahlen sowie Pause, Fortsetzen, Beenden, Seat Open und Rebuy implementieren. Registrierung und Tischvorbereitung bleiben im MVP auf dem Laptop.
+8. **Mehrgerätebetrieb nachweisen:** Integrationstests für Zustandswechsel und Versionskonflikte ergänzen sowie einen manuellen Test mit Browser und Android-PWA gegen den Raspberry Pi durchführen.
+
+### MVP-Regeln
+
+- Mehrere berechtigte Geräte dürfen gleichzeitig verbunden sein; ein exklusiver Steuerungs-Lock ist nicht Bestandteil des MVP.
+- Der Server entscheidet über gültige Zustandswechsel. Clients zeigen bei Konflikten den neu geladenen Zustand an.
+- Eine PWA benötigt im MVP eine Verbindung zum Heimnetz und zum Raspberry Pi; Offline-Steuerung gehört nicht zum Umfang.
+- Die spätere Entwicklung einer nativen Android-App bleibt möglich, weil sie denselben versionierten API-Vertrag verwenden kann.
 
 ---
 
