@@ -17,8 +17,6 @@ services:
   backend:
     build:
       context: ./backend
-    ports:
-      - 8080:8080
     environment:
       - SPRING_PROFILES_ACTIVE=default
       - DB_HOST=db
@@ -30,7 +28,8 @@ services:
       - APP_SEED_ADMIN_PASSWORD=${APP_SEED_ADMIN_PASSWORD:-}
       - APP_SEED_ADMIN_ROLE=${APP_SEED_ADMIN_ROLE:-ADMIN}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8081/actuator/health || exit 1"]
@@ -42,9 +41,10 @@ services:
     build:
       context: ./frontend
     ports:
-      - 3000:80
+      - 127.0.0.1:8085:80
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped
 volumes:
   db_data:

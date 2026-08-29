@@ -158,9 +158,9 @@ mvn clean package -DskipTests
 
 ## 🐳 Docker: Build, Deploy & Start
 
-### Mit Docker Desktop UI (einfachste Methode)
+### Installation mit Docker Compose
 
-1. **Docker Desktop starten** (falls nicht bereits laufend)
+1. **Docker Engine und Docker Compose starten**
 
 2. **Umgebungsvariablen vorbereiten (Pflicht):**
    ```bash
@@ -174,26 +174,27 @@ mvn clean package -DskipTests
    Dann in `.env` sichere Werte setzen:
    - `POSTGRES_PASSWORD`
    - `DB_PASSWORD`
+   - Beide Passwortwerte müssen identisch sein.
 
    Optional für lokale Entwicklung (Seed-Admin):
    - `APP_SEED_ADMIN_USERNAME`
    - `APP_SEED_ADMIN_PASSWORD`
    - `APP_SEED_ADMIN_ROLE` (Default: `ADMIN`)
 
-3. **Im Projektstamm das Docker Compose File starten:**
+3. **Im Projektstamm den Stack bauen und im Hintergrund starten:**
    ```bash
-   # Terminal im Root-Verzeichnis (wo docker-compose.yml liegt)
-   docker compose up --build
+   docker compose up --build -d
    ```
 
-4. **In der Docker Desktop UI beobachten:**
-   - Öffne Docker Desktop App
-   - Gehe zu **Containers**
-   - Du siehst Logs und Status der Container (pokerclock-backend, pokerclock-frontend, db)
+4. **Start prüfen:**
+   ```bash
+   docker compose ps
+   docker compose exec backend curl -f http://localhost:8081/actuator/health
+   ```
 
-5. **Application testen:**
-   - Frontend: `http://localhost:3000`
-   - Backend Status: `http://localhost:8080/actuator/health`
+5. **Anwendung testen:**
+   - Direkt auf dem Host: `http://127.0.0.1:8085`
+   - Hinter einem System-Nginx: über den dort eingerichteten Hostnamen, zum Beispiel `https://pokerclock.local`
 
 6. **Stack stoppen:**
    ```bash
@@ -204,9 +205,9 @@ mvn clean package -DskipTests
 
 | Service | Port | Beschreibung |
 |---------|------|-------------|
-| `frontend` | 3000 | React App (Nginx) |
-| `backend` | 8080 | Spring Boot REST API |
-| `db` | 5432 | PostgreSQL (nicht von außen sichtbar) |
+| `frontend` | `127.0.0.1:8085` | React App (Nginx), nur lokal für System-Nginx erreichbar |
+| `backend` | keiner | Spring Boot REST API im privaten Compose-Netz |
+| `db` | keiner | PostgreSQL im privaten Compose-Netz |
 
 ### Volumes & Persistenz
 - `db_data` – PostgreSQL Daten (persistent über Restarts)
@@ -224,18 +225,18 @@ Dieser Abschnitt beschreibt die beschlossene, noch umzusetzende Erweiterung. Pok
 ### Zieltopologie
 
 - Der auf dem Raspberry Pi installierte System-Nginx belegt den externen Port 80 und routet `pokerclock.local` zum PokerClock-Frontend.
-- Docker Compose veröffentlicht ausschließlich das Frontend auf einem lokalen Loopback-Port, zum Beispiel `127.0.0.1:3000`.
+- Docker Compose veröffentlicht ausschließlich das Frontend auf `127.0.0.1:8085`.
 - Frontend, Backend und PostgreSQL kommunizieren im privaten Compose-Netz. Backend, Management-Port und Datenbank werden nicht direkt im Heimnetz veröffentlicht.
-- Die Namensauflösung von `pokerclock.local` erfolgt per mDNS/Avahi über den Hostnamen des Raspberry Pi. Der Nginx Reverse Proxy ersetzt diese Namensauflösung nicht.
+- Die Namensauflösung von `pokerclock.local` erfolgt über den bestehenden `dnsmasq`-Eintrag auf die Raspberry-Pi-IP `192.168.178.58`. Der Nginx Reverse Proxy ersetzt diese Namensauflösung nicht.
 
 ```text
 Laptop oder Android-PWA
    |
 http://pokerclock.local
    |
-System-Nginx auf dem Raspberry Pi
+System-Nginx mit HTTPS auf dem Raspberry Pi
    |
-127.0.0.1:3000 -> Frontend-Nginx -> /api -> Spring Boot -> PostgreSQL
+127.0.0.1:8085 -> Frontend-Nginx -> /api -> Spring Boot -> PostgreSQL
 ```
 
 ### Umsetzungsschritte
