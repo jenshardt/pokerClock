@@ -13,7 +13,8 @@ Eine auf **Spring Boot** + **React** basierende Webanwendung zur digitalen Vorbe
   - "Tisch 1", "Tisch 2", "Tisch 3", ... auswählbar, solange in der Tuniervorbereitung nicht anders gesetzt - wenn dieser Tisch nicht vergeben wird, dann Anzeige "Tisch nicht in Nutzung!"
 - View Floorman
   - Weiter "zusammendampfen", z.B. indem die Zeit / Blindstufen aufgeklappt werden können
-- View Admin 
+- View Admin
+- Readme.md um aktuelle Rollen ergänzen. Ggf. fachliche und technische Doku trennen!
 
 ---
 
