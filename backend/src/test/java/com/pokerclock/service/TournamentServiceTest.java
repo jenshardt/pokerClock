@@ -4,7 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pokerclock.api.TournamentSetupRequest;
 import com.pokerclock.api.TournamentStatusResponse;
+import com.pokerclock.api.TournamentPayoutSummaryEntry;
 import com.pokerclock.model.Tournament;
+import com.pokerclock.model.TournamentCompletionReason;
 import com.pokerclock.repository.TournamentRepository;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,6 +39,9 @@ class TournamentServiceTest {
 
     @Mock
     private TournamentRepository repository;
+
+    @Mock
+    private TournamentResultArchiveService resultArchiveService;
 
     @InjectMocks
     private TournamentService tournamentService;
@@ -74,6 +79,7 @@ class TournamentServiceTest {
         request.setBlindDurationSeconds(1200);
         request.setHasNeutralDealer(true);
         request.setRebuyAllowed(true);
+        request.setPayoutSummaryEnabled(true);
 
         when(repository.save(any(Tournament.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -88,6 +94,8 @@ class TournamentServiceTest {
         assertEquals(4, saved.getPlayersLeft());
         assertEquals("READY", saved.getStatus());
         assertEquals("PREPARATION", saved.getWorkflowPhase());
+        assertTrue(saved.isPayoutSummaryEnabled());
+        assertEquals(TournamentCompletionReason.NONE, saved.getCompletionReason());
         assertTrue(saved.getTableDistributionJson() != null && !saved.getTableDistributionJson().isBlank());
     }
 
@@ -132,9 +140,49 @@ class TournamentServiceTest {
 
         assertEquals("REGISTRATION", tournament.getWorkflowPhase());
         assertEquals("ENDED", tournament.getStatus());
+        assertEquals(TournamentCompletionReason.ABORTED, tournament.getCompletionReason());
         assertFalse(tournament.isRunning());
         assertTrue(tournament.getAccumulatedElapsedSeconds() >= 4);
         verify(repository).save(tournament);
+    }
+
+    @Test
+    void endTournamentMarksTournamentAsCompleted() {
+        tournament.setWorkflowPhase("TOURNAMENT");
+        tournament.setStatus("PAUSED");
+        when(repository.findTopByOrderByCreatedAtDesc()).thenReturn(Optional.of(tournament));
+        when(repository.save(any(Tournament.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        tournamentService.endTournament(0);
+
+        assertEquals("ENDED", tournament.getStatus());
+        assertEquals(TournamentCompletionReason.COMPLETED, tournament.getCompletionReason());
+    }
+
+    @Test
+    void returnToRegistrationAbortsTournamentDuringPreparation() {
+        tournament.setWorkflowPhase("PREPARATION");
+        when(repository.findTopByOrderByCreatedAtDesc()).thenReturn(Optional.of(tournament));
+        when(repository.save(any(Tournament.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        tournamentService.returnToRegistration(0);
+
+        assertEquals("ENDED", tournament.getStatus());
+        assertEquals(TournamentCompletionReason.ABORTED, tournament.getCompletionReason());
+    }
+
+    @Test
+    void returnToRegistrationPreservesRegularCompletion() {
+        tournament.setWorkflowPhase("TOURNAMENT");
+        tournament.setStatus("ENDED");
+        tournament.setCompletionReason(TournamentCompletionReason.COMPLETED);
+        when(repository.findTopByOrderByCreatedAtDesc()).thenReturn(Optional.of(tournament));
+        when(repository.save(any(Tournament.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        tournamentService.returnToRegistration(0);
+
+        assertEquals("REGISTRATION", tournament.getWorkflowPhase());
+        assertEquals(TournamentCompletionReason.COMPLETED, tournament.getCompletionReason());
     }
 
     @Test
@@ -163,6 +211,46 @@ class TournamentServiceTest {
         assertFalse(tournament.isRunning());
         assertEquals(null, tournament.getResumedAt());
         assertTrue(tournament.getAccumulatedElapsedSeconds() >= 4);
+    }
+
+    @Test
+    void seatOpenIsAllowedWhenRebuysAreDisabled() {
+        tournament.setRebuyAllowed(false);
+        when(repository.findTopByOrderByCreatedAtDesc()).thenReturn(Optional.of(tournament));
+        when(repository.save(any(Tournament.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        tournamentService.seatOpen("Alice", 0);
+
+        assertEquals(List.of("Alice"), tournament.getEliminatedPlayers());
+    }
+
+    @Test
+    void rebuyIsRejectedWhenRebuysAreDisabled() {
+        tournament.setRebuyAllowed(false);
+        tournament.setEliminatedPlayers(new ArrayList<>(List.of("Alice")));
+        when(repository.findTopByOrderByCreatedAtDesc()).thenReturn(Optional.of(tournament));
+
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> tournamentService.registerRebuy("Alice", 0)
+        );
+
+        assertEquals("Rebuys sind für dieses Turnier nicht aktiviert.", exception.getMessage());
+    }
+
+    @Test
+    void rebuyRestoresEliminatedPlayerWhenEnabled() {
+        tournament.setRebuyAllowed(true);
+        tournament.setEliminatedPlayers(new ArrayList<>(List.of("Alice")));
+        tournament.setPlayersLeft(5);
+        when(repository.findTopByOrderByCreatedAtDesc()).thenReturn(Optional.of(tournament));
+        when(repository.save(any(Tournament.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        tournamentService.registerRebuy("Alice", 0);
+
+        assertTrue(tournament.getEliminatedPlayers().isEmpty());
+        assertEquals(6, tournament.getPlayersLeft());
+        assertEquals(1, tournament.getRebuys());
     }
 
     @Test
@@ -260,10 +348,33 @@ class TournamentServiceTest {
     @Test
     void getStatusReturnsPersistedPreparationPhase() {
         tournament.setWorkflowPhase("PREPARATION");
+        tournament.setPayoutSummaryEnabled(true);
+        tournament.setRebuyAllowed(true);
         when(repository.findTopByOrderByCreatedAtDesc()).thenReturn(Optional.of(tournament));
 
         TournamentStatusResponse response = tournamentService.getStatus();
 
         assertEquals("PREPARATION", response.getWorkflowPhase());
+        assertEquals("NONE", response.getCompletionReason());
+        assertTrue(response.isPayoutSummaryEnabled());
+        assertTrue(response.isRebuyAllowed());
+        assertNotNull(response.getGeneratedAt());
+    }
+
+    @Test
+    void getStatusIncludesPayoutSummaryForCompletedTournament() {
+        tournament.setId(42L);
+        tournament.setStatus("ENDED");
+        tournament.setCompletionReason(TournamentCompletionReason.COMPLETED);
+        tournament.setPayoutSummaryEnabled(true);
+        List<TournamentPayoutSummaryEntry> payoutSummary = List.of(
+                new TournamentPayoutSummaryEntry(1, "1. Platz", "Alice", null, java.math.BigDecimal.valueOf(100))
+        );
+        when(repository.findTopByOrderByCreatedAtDesc()).thenReturn(Optional.of(tournament));
+        when(resultArchiveService.getPayoutSummary(42L)).thenReturn(payoutSummary);
+
+        TournamentStatusResponse response = tournamentService.getStatus();
+
+        assertEquals(payoutSummary, response.getPayoutSummary());
     }
 }

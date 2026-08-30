@@ -76,6 +76,8 @@ export default function TableDistributionBoard({
   animate = false,
   sequenceIntervalMs = 5000,
   compact = false,
+  compressed = false,
+  interactive = true,
 }) {
   const seatLayouts = useMemo(() => getSeatLayouts(distribution), [distribution]);
 
@@ -89,21 +91,21 @@ export default function TableDistributionBoard({
   }, [seatLayouts]);
 
   return (
-    <div className={`${styles.distributionGrid} ${compact ? styles.compactGrid : ''}`}>
+    <div className={`${styles.distributionGrid} ${compact ? styles.compactGrid : ''} ${compressed ? styles.compressedGrid : ''}`}>
       {distribution.map((table, tableIndex) => (
-        <article key={table.tableName} className={`${styles.distributionCard} ${compact ? styles.compactCard : ''}`}>
+        <article key={table.tableName} className={`${styles.distributionCard} ${compact ? styles.compactCard : ''} ${compressed ? styles.compressedCard : ''}`}>
           <h3 className={styles.tableTitle}>{table.tableName}</h3>
           <div
-            className={`${styles.pokerTableWrap} ${compact ? styles.compactWrap : ''}`}
-            onClick={() => setActiveTablePopup?.((prev) => prev === table.tableName ? null : table.tableName)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(event) => {
+            className={`${styles.pokerTableWrap} ${compact ? styles.compactWrap : ''} ${compressed ? styles.compressedWrap : ''}`}
+            onClick={interactive ? () => setActiveTablePopup?.((prev) => prev === table.tableName ? null : table.tableName) : undefined}
+            role={interactive ? 'button' : undefined}
+            tabIndex={interactive ? 0 : undefined}
+            onKeyDown={interactive ? (event) => {
               if ((event.key === 'Enter' || event.key === ' ') && setActiveTablePopup) {
                 event.preventDefault();
                 setActiveTablePopup((prev) => prev === table.tableName ? null : table.tableName);
               }
-            }}
+            } : undefined}
           >
             <div className={`${styles.pokerTableHorizontal} ${animate ? styles.tableEnter : ''}`} />
             <div className={`${styles.cardStack} ${animate ? styles.tableEnter : ''}`} aria-hidden="true">
@@ -153,6 +155,7 @@ export default function TableDistributionBoard({
                     className={[
                       styles.seatPill,
                       compact && styles.compactSeat,
+                      compressed && styles.compressedSeat,
                       hasRoleMarker && styles.markedSeat,
                       isDealerSeat && styles.dealerSeat,
                       isSmallBlindSeat && styles.sbSeat,

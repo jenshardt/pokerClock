@@ -97,6 +97,10 @@ export default function RegistrationPage({
             <input type="checkbox" checked={form.hasNeutralDealer} onChange={(e) => updateForm('hasNeutralDealer', e.target.checked)} />
             Neutraler Dealer (Spieler geben nicht selbst)
           </label>
+          <label className={styles.toggleLine}>
+            <input type="checkbox" checked={form.payoutSummaryEnabled} onChange={(e) => updateForm('payoutSummaryEnabled', e.target.checked)} />
+            Auszahlungsübersicht beim Turnierabschluss erfassen
+          </label>
           <p className={styles.hint}>Aktuell erfasst: {participants.length} Spieler. Für Texas Holdem sind 2-10 Spieler je Tisch sinnvoll.</p>
         </article>
       </div>

@@ -1,6 +1,7 @@
 package com.pokerclock.api;
 
 import java.util.ArrayList;
+import java.time.Instant;
 import java.util.List;
 
 public class TournamentStatusResponse {
@@ -13,6 +14,11 @@ public class TournamentStatusResponse {
     private String nextItem;
     private String status;
     private String workflowPhase;
+    private String completionReason;
+    private boolean payoutSummaryEnabled;
+    private boolean rebuyAllowed;
+    private List<TournamentPayoutSummaryEntry> payoutSummary = new ArrayList<>();
+    private Instant generatedAt;
     private long version;
     private long remainingSeconds;
     private long elapsedSeconds;
@@ -98,6 +104,46 @@ public class TournamentStatusResponse {
 
     public void setWorkflowPhase(String workflowPhase) {
         this.workflowPhase = workflowPhase;
+    }
+
+    public String getCompletionReason() {
+        return completionReason;
+    }
+
+    public void setCompletionReason(String completionReason) {
+        this.completionReason = completionReason;
+    }
+
+    public boolean isPayoutSummaryEnabled() {
+        return payoutSummaryEnabled;
+    }
+
+    public void setPayoutSummaryEnabled(boolean payoutSummaryEnabled) {
+        this.payoutSummaryEnabled = payoutSummaryEnabled;
+    }
+
+    public boolean isRebuyAllowed() {
+        return rebuyAllowed;
+    }
+
+    public void setRebuyAllowed(boolean rebuyAllowed) {
+        this.rebuyAllowed = rebuyAllowed;
+    }
+
+    public Instant getGeneratedAt() {
+        return generatedAt;
+    }
+
+    public void setGeneratedAt(Instant generatedAt) {
+        this.generatedAt = generatedAt;
+    }
+
+    public List<TournamentPayoutSummaryEntry> getPayoutSummary() {
+        return payoutSummary;
+    }
+
+    public void setPayoutSummary(List<TournamentPayoutSummaryEntry> payoutSummary) {
+        this.payoutSummary = payoutSummary;
     }
 
     public long getVersion() {
@@ -285,6 +331,31 @@ public class TournamentStatusResponse {
 
         public Builder workflowPhase(String workflowPhase) {
             response.workflowPhase = workflowPhase;
+            return this;
+        }
+
+        public Builder completionReason(String completionReason) {
+            response.completionReason = completionReason;
+            return this;
+        }
+
+        public Builder payoutSummaryEnabled(boolean payoutSummaryEnabled) {
+            response.payoutSummaryEnabled = payoutSummaryEnabled;
+            return this;
+        }
+
+        public Builder rebuyAllowed(boolean rebuyAllowed) {
+            response.rebuyAllowed = rebuyAllowed;
+            return this;
+        }
+
+        public Builder generatedAt(Instant generatedAt) {
+            response.generatedAt = generatedAt;
+            return this;
+        }
+
+        public Builder payoutSummary(List<TournamentPayoutSummaryEntry> payoutSummary) {
+            response.payoutSummary = payoutSummary;
             return this;
         }
 

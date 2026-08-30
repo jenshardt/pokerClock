@@ -13,6 +13,7 @@ public class TournamentSetupRequest {
     private int blindDurationSeconds;
     private boolean hasNeutralDealer;
     private boolean rebuyAllowed;
+    private boolean payoutSummaryEnabled;
 
     public String getTournamentName() {
         return tournamentName;
@@ -84,5 +85,13 @@ public class TournamentSetupRequest {
 
     public void setRebuyAllowed(boolean rebuyAllowed) {
         this.rebuyAllowed = rebuyAllowed;
+    }
+
+    public boolean isPayoutSummaryEnabled() {
+        return payoutSummaryEnabled;
+    }
+
+    public void setPayoutSummaryEnabled(boolean payoutSummaryEnabled) {
+        this.payoutSummaryEnabled = payoutSummaryEnabled;
     }
 }

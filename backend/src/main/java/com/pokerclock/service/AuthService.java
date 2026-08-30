@@ -3,6 +3,7 @@ package com.pokerclock.service;
 import com.pokerclock.api.CurrentUserResponse;
 import com.pokerclock.api.LoginResponse;
 import com.pokerclock.model.AppUser;
+import com.pokerclock.model.UserRole;
 import com.pokerclock.repository.AppUserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -12,7 +13,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -21,8 +21,6 @@ import java.util.concurrent.TimeUnit;
 public class AuthService {
 
     static final Duration SESSION_TTL = Duration.ofHours(8);
-
-    private static final Set<String> ALLOWED_ROLES = Set.of("ADMIN", "ORGANIZER");
 
     private final AppUserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -36,16 +34,15 @@ public class AuthService {
     public Optional<LoginResponse> authenticate(String username, String password) {
         return userRepository.findByUsernameIgnoreCase(username == null ? "" : username.trim())
                 .filter(user -> passwordEncoder.matches(password == null ? "" : password, user.getPasswordHash()))
-                .filter(user -> ALLOWED_ROLES.contains(user.getRole()))
                 .map(user -> {
                     String token = UUID.randomUUID().toString();
                     sessions.put(token, new SessionUser(user.getUsername(), user.getRole(), Instant.now()));
-                    return new LoginResponse(token, user.getUsername(), user.getRole());
+                    return new LoginResponse(token, user.getUsername(), user.getRole().name());
                 });
     }
 
     public Optional<CurrentUserResponse> getCurrentUser(String token) {
-        return resolveSession(token).map(session -> new CurrentUserResponse(session.username(), session.role()));
+        return resolveSession(token).map(session -> new CurrentUserResponse(session.username(), session.role().name()));
     }
 
     public Optional<SessionUser> resolveSession(String token) {
@@ -54,7 +51,7 @@ public class AuthService {
         }
 
         SessionUser session = sessions.get(token);
-        if (session == null || !ALLOWED_ROLES.contains(session.role())) {
+        if (session == null) {
             return Optional.empty();
         }
         if (Duration.between(session.authenticatedAt(), Instant.now()).compareTo(SESSION_TTL) > 0) {
@@ -76,22 +73,22 @@ public class AuthService {
         }
     }
 
-    public void ensureSeedUser(String username, String rawPassword, String role) {
-        AppUser user = userRepository.findByUsernameIgnoreCase(username)
-                .orElseGet(AppUser::new);
-        Instant now = Instant.now();
-
-        if (user.getCreatedAt() == null) {
-            user.setCreatedAt(now);
+    public boolean createSeedUserIfAbsent(String username, String rawPassword, UserRole role) {
+        if (userRepository.findByUsernameIgnoreCase(username).isPresent()) {
+            return false;
         }
 
+        AppUser user = new AppUser();
+        Instant now = Instant.now();
         user.setUsername(username);
         user.setPasswordHash(passwordEncoder.encode(rawPassword));
         user.setRole(role);
+        user.setCreatedAt(now);
         user.setUpdatedAt(now);
         userRepository.save(user);
+        return true;
     }
 
-    public record SessionUser(String username, String role, Instant authenticatedAt) {
+    public record SessionUser(String username, UserRole role, Instant authenticatedAt) {
     }
 }

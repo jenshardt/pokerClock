@@ -12,6 +12,9 @@ public class TournamentResultArchive {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "tournament_id")
+    private Long tournamentId;
+
     private String tournamentName;
 
     private Instant savedAt;
@@ -22,6 +25,14 @@ public class TournamentResultArchive {
 
     public Long getId() {
         return id;
+    }
+
+    public Long getTournamentId() {
+        return tournamentId;
+    }
+
+    public void setTournamentId(Long tournamentId) {
+        this.tournamentId = tournamentId;
     }
 
     public String getTournamentName() {

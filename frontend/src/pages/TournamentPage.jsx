@@ -80,6 +80,9 @@ export default function TournamentPage({
   shuffleUpAndDeal,
   requestBackToConfiguration,
   returnToRegistration,
+  canReturnToRegistration = true,
+  showCompletionSummary = true,
+  compact = false,
 }) {
   const statusText = status?.status || 'Turnier bereit';
   const isPaused = statusText === 'Turnier pausiert';
@@ -103,6 +106,7 @@ export default function TournamentPage({
   const reentryPriceEuro = toAmount(tournamentConfig?.reentryPriceEuro);
   const prizePool = toAmount((buyInEuro * Number(status?.entries || 0)) + (reentryPriceEuro * Number(status?.rebuys || 0)));
   const hasPrizePool = prizePool > 0;
+  const payoutSummaryEnabled = status?.payoutSummaryEnabled ?? tournamentConfig?.payoutSummaryEnabled ?? false;
   const activePlayers = status?.activePlayerNames || [];
   const eliminatedPlayersInOrder = status?.eliminatedPlayerNames || [];
   const seatsPerTable = Number(status?.seatsPerTable || tournamentConfig?.seatsPerTable || 0);
@@ -242,7 +246,7 @@ export default function TournamentPage({
     setPersistResult(false);
     setSummaryMessage('');
     setEndConfirmOpen(false);
-    setSummaryOpen(true);
+    setSummaryOpen(showCompletionSummary);
   };
 
   const handlePayoutModeChange = (nextMode) => {
@@ -360,7 +364,7 @@ export default function TournamentPage({
   }, [duplicateSelectedPlayers, hasPrizePool, payoutRows, payoutValueMode, prizePool, totals.amount, totals.percent]);
 
   useEffect(() => {
-    if (!isEnded || summaryOpen) {
+    if (!showCompletionSummary || !isEnded || summaryOpen) {
       return;
     }
 
@@ -441,8 +445,10 @@ export default function TournamentPage({
     if (!selectedSeatAction?.playerName) {
       return;
     }
-    await markSeatOpen(selectedSeatAction.playerName);
-    setSelectedSeatAction(null);
+    const success = await markSeatOpen(selectedSeatAction.playerName);
+    if (success) {
+      setSelectedSeatAction((current) => current ? { ...current, seatStatus: 'eliminated' } : null);
+    }
   };
 
   const handleRebuy = async () => {
@@ -454,7 +460,7 @@ export default function TournamentPage({
   };
 
   return (
-    <section className={`${styles.tournamentScreen} card`}>
+    <section className={`${styles.tournamentScreen} ${compact ? styles.compactTournamentScreen : ''} card`}>
       <div className={styles.topLine}>
         <div className={styles.levelLabel}>Level {status?.currentLevelNumber ?? '—'}</div>
         <div className={`${styles.statusBadge} ${isRunning ? styles.statusRunning : isPaused ? styles.statusPaused : styles.statusEnded}`}>
@@ -551,12 +557,16 @@ export default function TournamentPage({
                       type="button"
                       className="primary-button"
                       onClick={handleRebuy}
-                      disabled={actionBusy || isEnded || selectedSeatAction.seatStatus !== 'eliminated'}
+                      disabled={actionBusy || isEnded || !status?.rebuyAllowed || selectedSeatAction.seatStatus !== 'eliminated'}
                     >
                       Rebuy
                     </button>
                     <button type="button" className="ghost-button" onClick={() => setSelectedSeatAction(null)} disabled={actionBusy}>Schließen</button>
                   </div>
+                  {!status?.rebuyAllowed && <p className={styles.seatActionHint}>Rebuys sind für dieses Turnier nicht aktiviert.</p>}
+                  {status?.rebuyAllowed && selectedSeatAction.seatStatus === 'active' && (
+                    <p className={styles.seatActionHint}>Für einen Rebuy zuerst „Seat open“ wählen. Danach wird „Rebuy“ für diesen Spieler aktiv.</p>
+                  )}
                 </div>
               )}
             </section>
@@ -570,7 +580,9 @@ export default function TournamentPage({
         {isReady ? (
           <>
             {shuffleUpAndDeal && <button type="button" className="primary-button" onClick={shuffleUpAndDeal} disabled={actionBusy}>Shuffle Up and Deal</button>}
-            <button type="button" className="ghost-button" onClick={requestBackToConfiguration} disabled={actionBusy}>Zurück zur Konfiguration</button>
+            {canReturnToRegistration && (
+              <button type="button" className="ghost-button" onClick={requestBackToConfiguration} disabled={actionBusy}>Zurück zur Konfiguration</button>
+            )}
           </>
         ) : (
           <>
@@ -579,7 +591,9 @@ export default function TournamentPage({
             {showTableManagement && <button type="button" className="ghost-button" onClick={balanceTables} disabled={actionBusy || !isPaused || isEnded}>Tische ausgleichen</button>}
             {showTableManagement && <button type="button" className="ghost-button" onClick={createFinalTable} disabled={actionBusy || !isPaused || isEnded || !finalTableEligible}>Final Table erstellen</button>}
             <button type="button" className="danger-button" onClick={handleEndClick} disabled={actionBusy || isEnded}>Turnier beenden</button>
-            <button type="button" className="ghost-button" onClick={requestBackToConfiguration} disabled={actionBusy || (!isPaused && !isEnded)}>Zurück zur Konfiguration</button>
+            {canReturnToRegistration && (
+              <button type="button" className="ghost-button" onClick={requestBackToConfiguration} disabled={actionBusy || (!isPaused && !isEnded)}>Zurück zur Konfiguration</button>
+            )}
           </>
         )}
       </div>
@@ -621,7 +635,7 @@ export default function TournamentPage({
               <strong>Ausgeschieden:</strong> {(status?.eliminatedPlayerNames || []).join(', ') || '—'}
             </div>
 
-            {hasPrizePool ? (
+            {payoutSummaryEnabled && hasPrizePool ? (
               <section className={styles.payoutSection}>
                 <div className={styles.payoutHead}>
                   <h3>Preispool & Auszahlungen</h3>
@@ -747,8 +761,12 @@ export default function TournamentPage({
               </section>
             ) : (
               <section className={styles.payoutSection}>
-                <h3>Preispool & Auszahlungen</h3>
-                <p>Keine Buy-in/Rebuy-Beträge vorhanden. Daher wird keine Auszahlung berechnet.</p>
+                <h3>Turnierabschluss</h3>
+                <p>
+                  {payoutSummaryEnabled
+                    ? 'Keine Buy-in/Rebuy-Beträge vorhanden. Daher wird keine Auszahlung berechnet.'
+                    : 'Für dieses Turnier ist keine Auszahlungsübersicht vorgesehen.'}
+                </p>
               </section>
             )}
 

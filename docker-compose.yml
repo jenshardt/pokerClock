@@ -24,9 +24,9 @@ services:
       - DB_NAME=pokerclock
       - DB_USERNAME=postgres
       - DB_PASSWORD=${DB_PASSWORD:?DB_PASSWORD is required}
-      - APP_SEED_ADMIN_USERNAME=${APP_SEED_ADMIN_USERNAME:-}
-      - APP_SEED_ADMIN_PASSWORD=${APP_SEED_ADMIN_PASSWORD:-}
-      - APP_SEED_ADMIN_ROLE=${APP_SEED_ADMIN_ROLE:-ADMIN}
+      - APP_SEED_USERS_FILE=/run/secrets/pokerclock_seed_users
+    secrets:
+      - pokerclock_seed_users
     depends_on:
       db:
         condition: service_healthy
@@ -48,3 +48,6 @@ services:
     restart: unless-stopped
 volumes:
   db_data:
+secrets:
+  pokerclock_seed_users:
+    file: ${APP_SEED_USERS_FILE:-./secrets/users.example.json}

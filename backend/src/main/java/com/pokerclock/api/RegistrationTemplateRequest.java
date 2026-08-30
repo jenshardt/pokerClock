@@ -18,6 +18,7 @@ public class RegistrationTemplateRequest {
     private int tableCount;
     private int seatsPerTable;
     private boolean hasNeutralDealer;
+    private boolean payoutSummaryEnabled;
     private List<String> participants = new ArrayList<>();
     private List<BlindLevelRequest> blindLevels = new ArrayList<>();
 
@@ -115,6 +116,14 @@ public class RegistrationTemplateRequest {
 
     public void setHasNeutralDealer(boolean hasNeutralDealer) {
         this.hasNeutralDealer = hasNeutralDealer;
+    }
+
+    public boolean isPayoutSummaryEnabled() {
+        return payoutSummaryEnabled;
+    }
+
+    public void setPayoutSummaryEnabled(boolean payoutSummaryEnabled) {
+        this.payoutSummaryEnabled = payoutSummaryEnabled;
     }
 
     public List<String> getParticipants() {

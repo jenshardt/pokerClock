@@ -2,10 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AUTH_TOKEN_KEY, getRandomDelayMs } from './api';
 import { DEFAULT_BLIND_LEVELS, initialForm } from './constants';
 import LoginPage from './pages/LoginPage';
+import FloormanWaitingPage from './pages/FloormanWaitingPage';
 import PreparationPage from './pages/PreparationPage';
 import RegistrationPage from './pages/RegistrationPage';
+import TableDisplayPage from './pages/TableDisplayPage';
 import { createSoundManager } from './sound';
 import TournamentPage from './pages/TournamentPage';
+import useLiveTournamentStatus from './useLiveTournamentStatus';
 
 function toStep(workflowPhase) {
   if (workflowPhase === 'PREPARATION') {
@@ -53,6 +56,9 @@ function App() {
   const soundManagerRef = useRef(null);
   const lastBlindAnnouncementRef = useRef(null);
   const userMenuRef = useRef(null);
+  const isFloorman = currentUser?.role === 'FLOORMAN';
+  const isTable = currentUser?.role === 'TABLE';
+  const liveStatus = useLiveTournamentStatus(status);
 
   const participants = useMemo(
     () => form.participantsText.split(/[\n,]/).map((p) => p.trim()).filter(Boolean),
@@ -242,12 +248,14 @@ function App() {
       return;
     }
 
-    loadLatestTemplate();
+    if (currentUser.role === 'ADMIN') {
+      loadLatestTemplate();
+    }
     fetchStatus();
   }, [currentUser]);
 
   useEffect(() => {
-    if (!currentUser || (step !== 'preparation' && step !== 'tournament')) {
+    if (!currentUser || (!isFloorman && !isTable && step !== 'preparation' && step !== 'tournament')) {
       return undefined;
     }
 
@@ -267,7 +275,7 @@ function App() {
         return;
       }
       const json = await response.json();
-      setStatus(json);
+      setStatus({ ...json, receivedAt: Date.now() });
       if (Array.isArray(json?.distribution)) {
         setDistribution(json.distribution);
       }
@@ -326,6 +334,7 @@ function App() {
       tableCount: template.tableCount || 2,
       seatsPerTable: template.seatsPerTable || 8,
       hasNeutralDealer: template.hasNeutralDealer ?? false,
+      payoutSummaryEnabled: template.payoutSummaryEnabled ?? false,
       participantsText: participantText,
       blindLevels: normalizeBlindLevels(template.blindLevels),
     });
@@ -436,6 +445,7 @@ function App() {
     tableCount: Number(form.tableCount),
     seatsPerTable: Number(form.seatsPerTable),
     hasNeutralDealer: form.hasNeutralDealer,
+    payoutSummaryEnabled: form.payoutSummaryEnabled,
     participants,
     blindLevels: form.blindLevels.map((level, index) => ({
       level: index + 1,
@@ -808,7 +818,9 @@ function App() {
     setSettingsOpen(true);
   };
 
-  const heroTitle = step === 'preparation'
+  const heroTitle = isFloorman && step === 'registration'
+    ? 'Warte auf Turniervorbereitung'
+    : step === 'preparation'
     ? 'Tischverteilung - bitte Plätze einnehmen'
     : step === 'tournament'
       ? 'Turnier läuft - viel Erfolg'
@@ -840,6 +852,10 @@ function App() {
     );
   }
 
+  if (isTable) {
+    return <TableDisplayPage status={liveStatus} distribution={distribution} />;
+  }
+
   return (
     <div className="app-shell">
       {authPopup && <div className="auth-popup">{authPopup}</div>}
@@ -850,7 +866,7 @@ function App() {
           <h1>{heroTitle}</h1>
         </div>
         <div className="hero-side">
-          <div className="hero-chips">♠ ♥ ♦ ♣</div>
+          {!isFloorman && <div className="hero-chips">♠ ♥ ♦ ♣</div>}
           <div className="hero-user-menu" ref={userMenuRef}>
             <button
               type="button"
@@ -976,25 +992,29 @@ function App() {
       {message && step !== 'tournament' && <div className="message-banner">{message}</div>}
 
       {step === 'registration' && (
-        <RegistrationPage
-          form={form}
-          updateForm={updateForm}
-          updateBlindLevel={updateBlindLevel}
-          addBlindLevel={addBlindLevel}
-          addBreakLevel={addBreakLevel}
-          insertBlindLevelAt={insertBlindLevelAt}
-          insertBreakAt={insertBreakAt}
-          moveBlindLevel={moveBlindLevel}
-          removeBlindLevel={removeBlindLevel}
-          resetBlindDefaults={resetBlindDefaults}
-          participants={participants}
-          importInputRef={importInputRef}
-          saveTemplate={saveTemplate}
-          createTournament={createTournament}
-          exportTemplate={exportTemplate}
-          triggerImport={triggerImport}
-          importTemplate={importTemplate}
-        />
+        isFloorman ? (
+          <FloormanWaitingPage status={status} />
+        ) : (
+          <RegistrationPage
+            form={form}
+            updateForm={updateForm}
+            updateBlindLevel={updateBlindLevel}
+            addBlindLevel={addBlindLevel}
+            addBreakLevel={addBreakLevel}
+            insertBlindLevelAt={insertBlindLevelAt}
+            insertBreakAt={insertBreakAt}
+            moveBlindLevel={moveBlindLevel}
+            removeBlindLevel={removeBlindLevel}
+            resetBlindDefaults={resetBlindDefaults}
+            participants={participants}
+            importInputRef={importInputRef}
+            saveTemplate={saveTemplate}
+            createTournament={createTournament}
+            exportTemplate={exportTemplate}
+            triggerImport={triggerImport}
+            importTemplate={importTemplate}
+          />
+        )
       )}
 
       {step === 'preparation' && (
@@ -1004,19 +1024,21 @@ function App() {
           setActiveTablePopup={setActiveTablePopup}
           startTournament={startTournament}
           requestBackToConfiguration={requestBackToConfiguration}
+          canReturnToRegistration={!isFloorman}
           onSeatPlaced={handleSeatPlacementAnnouncement}
         />
       )}
 
       {step === 'tournament' && (
         <TournamentPage
-          status={status}
+          status={liveStatus}
           distribution={distribution}
           tournamentConfig={{
             tournamentName: form.tournamentName,
             location: form.location,
             buyInEuro: form.buyInEuro,
             reentryPriceEuro: form.reentryPriceEuro,
+            payoutSummaryEnabled: form.payoutSummaryEnabled,
             participants,
           }}
           pauseTournament={pauseTournament}
@@ -1032,6 +1054,9 @@ function App() {
           shuffleUpAndDeal={shuffleUpAndDeal}
           requestBackToConfiguration={requestBackToConfiguration}
           returnToRegistration={returnToRegistration}
+          canReturnToRegistration={!isFloorman}
+          showCompletionSummary={!isFloorman}
+          compact={isFloorman}
         />
       )}
 

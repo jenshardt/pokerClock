@@ -62,6 +62,7 @@ public class RegistrationTemplateService {
         request.setStartingChips(template.getStartingStack());
         request.setHasNeutralDealer(template.isHasNeutralDealer());
         request.setRebuyAllowed(template.isRebuyEnabled());
+        request.setPayoutSummaryEnabled(template.isPayoutSummaryEnabled());
 
         String blindStructure = template.getBlindLevels().stream()
             .map(level -> {
@@ -97,6 +98,7 @@ public class RegistrationTemplateService {
         entity.setTableCount(request.getTableCount());
         entity.setSeatsPerTable(request.getSeatsPerTable());
         entity.setHasNeutralDealer(request.isHasNeutralDealer());
+        entity.setPayoutSummaryEnabled(request.isPayoutSummaryEnabled());
         entity.setParticipants(new ArrayList<>(request.getParticipants()));
 
         List<RegistrationBlindLevel> levels = request.getBlindLevels().stream().map(level -> {
@@ -129,6 +131,7 @@ public class RegistrationTemplateService {
         response.setTableCount(entity.getTableCount());
         response.setSeatsPerTable(entity.getSeatsPerTable());
         response.setHasNeutralDealer(entity.isHasNeutralDealer());
+        response.setPayoutSummaryEnabled(entity.isPayoutSummaryEnabled());
         response.setParticipants(new ArrayList<>(entity.getParticipants()));
         response.setBlindLevels(entity.getBlindLevels().stream().map(level -> {
             BlindLevelRequest dto = new BlindLevelRequest();

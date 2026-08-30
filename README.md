@@ -177,10 +177,7 @@ mvn clean package -DskipTests
    - `DB_PASSWORD`
    - Beide Passwortwerte müssen identisch sein.
 
-   Optional für lokale Entwicklung (Seed-Admin):
-   - `APP_SEED_ADMIN_USERNAME`
-   - `APP_SEED_ADMIN_PASSWORD`
-   - `APP_SEED_ADMIN_ROLE` (Default: `ADMIN`)
+   Beim ersten Start werden die Demo-Konten `Admin` (`admin`), `Floorman` (`floorman`), `Tisch1` (`tisch`) und `Tisch2` (`tisch`) angelegt. Für einen produktiven Betrieb `secrets/users.example.json` nach `secrets/users.json` kopieren, sichere Passwörter setzen und `APP_SEED_USERS_FILE=./secrets/users.json` in `.env` eintragen. Die lokale Datei ist von Git ausgeschlossen und wird von Docker nur read-only als Secret an das Backend übergeben.
 
 3. **Im Projektstamm den Stack bauen und im Hintergrund starten:**
    ```bash
@@ -228,7 +225,11 @@ Die produktive Zielumgebung ist ein Raspberry Pi 5 mit 64-Bit-Raspberry-Pi-OS (`
    test -f .env && echo ".env vorhanden" || cp .env.example .env
    nano .env
    ```
-   `POSTGRES_PASSWORD` und `DB_PASSWORD` müssen identisch sein. Für die erste Anmeldung müssen zusätzlich `APP_SEED_ADMIN_USERNAME` und `APP_SEED_ADMIN_PASSWORD` gesetzt sein.
+   `POSTGRES_PASSWORD` und `DB_PASSWORD` müssen identisch sein. Für einen produktiven Betrieb die lokale Benutzer-Secret-Datei erzeugen, mit sicheren Zugangsdaten füllen und den Pfad als `APP_SEED_USERS_FILE` in `.env` setzen:
+   ```bash
+   cp secrets/users.example.json secrets/users.json
+   chmod 600 secrets/users.json
+   ```
 3. **Images für ARM bauen und Container starten:**
    ```bash
    docker compose up --build -d

@@ -3,6 +3,8 @@ package com.pokerclock.controller;
 import com.pokerclock.api.CreateTournamentResponse;
 import com.pokerclock.api.RegistrationTemplateRequest;
 import com.pokerclock.api.RegistrationTemplateResponse;
+import com.pokerclock.config.RequireRoles;
+import com.pokerclock.model.UserRole;
 import com.pokerclock.service.RegistrationTemplateService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,11 +20,13 @@ public class RegistrationController {
     }
 
     @PostMapping
+    @RequireRoles(UserRole.ADMIN)
     public ResponseEntity<RegistrationTemplateResponse> createTemplate(@RequestBody RegistrationTemplateRequest request) {
         return ResponseEntity.ok(registrationService.save(request));
     }
 
     @GetMapping("/latest")
+    @RequireRoles(UserRole.ADMIN)
     public ResponseEntity<RegistrationTemplateResponse> getLatestTemplate() {
         return registrationService.getLatest()
                 .map(ResponseEntity::ok)
@@ -30,16 +34,19 @@ public class RegistrationController {
     }
 
     @GetMapping("/{id}/export")
+    @RequireRoles(UserRole.ADMIN)
     public ResponseEntity<RegistrationTemplateResponse> exportTemplate(@PathVariable Long id) {
         return ResponseEntity.ok(registrationService.exportById(id));
     }
 
     @PostMapping("/import")
+    @RequireRoles(UserRole.ADMIN)
     public ResponseEntity<RegistrationTemplateResponse> importTemplate(@RequestBody RegistrationTemplateRequest request) {
         return ResponseEntity.ok(registrationService.importTemplate(request));
     }
 
     @PostMapping("/{id}/create-tournament")
+    @RequireRoles(UserRole.ADMIN)
     public ResponseEntity<CreateTournamentResponse> createTournament(@PathVariable Long id) {
         return ResponseEntity.ok(registrationService.createTournament(id));
     }

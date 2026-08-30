@@ -5,6 +5,8 @@ import com.pokerclock.api.TournamentResultSaveRequest;
 import com.pokerclock.api.TournamentResultSaveResponse;
 import com.pokerclock.api.TournamentSetupRequest;
 import com.pokerclock.api.TournamentStatusResponse;
+import com.pokerclock.config.RequireRoles;
+import com.pokerclock.model.UserRole;
 import com.pokerclock.service.TournamentResultArchiveService;
 import com.pokerclock.service.TournamentService;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -25,58 +27,68 @@ public class TournamentController {
     }
 
     @GetMapping("/status")
+    @RequireRoles({UserRole.ADMIN, UserRole.FLOORMAN, UserRole.TABLE})
     public ResponseEntity<TournamentStatusResponse> getStatus() {
         return ResponseEntity.ok(tournamentService.getStatus());
     }
 
     @PostMapping("/setup")
+    @RequireRoles(UserRole.ADMIN)
     public ResponseEntity<Void> setupTournament(@RequestBody TournamentSetupRequest request) {
         tournamentService.setupTournament(request);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/start")
+    @RequireRoles({UserRole.ADMIN, UserRole.FLOORMAN})
     public ResponseEntity<Void> startTournament(@RequestHeader("If-Match") long expectedVersion) {
         tournamentService.startTournament(expectedVersion);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/show-tournament")
+    @RequireRoles({UserRole.ADMIN, UserRole.FLOORMAN})
     public ResponseEntity<Void> showTournament(@RequestHeader("If-Match") long expectedVersion) {
         tournamentService.showTournament(expectedVersion);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/return-to-registration")
+    @RequireRoles(UserRole.ADMIN)
     public ResponseEntity<Void> returnToRegistration(@RequestHeader("If-Match") long expectedVersion) {
         tournamentService.returnToRegistration(expectedVersion);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/pause")
+    @RequireRoles({UserRole.ADMIN, UserRole.FLOORMAN})
     public ResponseEntity<Void> pauseTournament(@RequestHeader("If-Match") long expectedVersion) {
         tournamentService.pauseTournament(expectedVersion);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/resume")
+    @RequireRoles({UserRole.ADMIN, UserRole.FLOORMAN})
     public ResponseEntity<Void> resumeTournament(@RequestHeader("If-Match") long expectedVersion) {
         tournamentService.resumeTournament(expectedVersion);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/end")
+    @RequireRoles({UserRole.ADMIN, UserRole.FLOORMAN})
     public ResponseEntity<Void> endTournament(@RequestHeader("If-Match") long expectedVersion) {
         tournamentService.endTournament(expectedVersion);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/results")
+    @RequireRoles({UserRole.ADMIN, UserRole.FLOORMAN})
     public ResponseEntity<TournamentResultSaveResponse> saveTournamentResult(@RequestBody TournamentResultSaveRequest request) {
         return ResponseEntity.ok(resultArchiveService.saveResult(request));
     }
 
     @PostMapping("/seat-open")
+    @RequireRoles({UserRole.ADMIN, UserRole.FLOORMAN})
     public ResponseEntity<Void> seatOpen(@RequestBody(required = false) PlayerActionRequest request,
                                          @RequestHeader("If-Match") long expectedVersion) {
         tournamentService.seatOpen(request != null ? request.getPlayerName() : null, expectedVersion);
@@ -84,6 +96,7 @@ public class TournamentController {
     }
 
     @PostMapping("/rebuy")
+    @RequireRoles({UserRole.ADMIN, UserRole.FLOORMAN})
     public ResponseEntity<Void> rebuy(@RequestBody(required = false) PlayerActionRequest request,
                                       @RequestHeader("If-Match") long expectedVersion) {
         tournamentService.registerRebuy(request != null ? request.getPlayerName() : null, expectedVersion);
@@ -91,12 +104,14 @@ public class TournamentController {
     }
 
     @PostMapping("/table/balance")
+    @RequireRoles({UserRole.ADMIN, UserRole.FLOORMAN})
     public ResponseEntity<Void> balanceTables(@RequestHeader("If-Match") long expectedVersion) {
         tournamentService.balanceTables(expectedVersion);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/table/final-table")
+    @RequireRoles({UserRole.ADMIN, UserRole.FLOORMAN})
     public ResponseEntity<Void> createFinalTable(@RequestHeader("If-Match") long expectedVersion) {
         tournamentService.createFinalTable(expectedVersion);
         return ResponseEntity.ok().build();

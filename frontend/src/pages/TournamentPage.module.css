@@ -2,6 +2,43 @@
   padding: 24px;
 }
 
+.compactTournamentScreen {
+  padding: 12px;
+}
+
+.compactTournamentScreen .mainGrid {
+  grid-template-columns: 1fr;
+  margin-bottom: 10px;
+}
+
+.compactTournamentScreen .sidePanel {
+  display: none;
+}
+
+.compactTournamentScreen .centerPanel {
+  min-height: 250px;
+}
+
+.compactTournamentScreen .tableBoardSection {
+  margin-bottom: 10px;
+  padding: 10px;
+}
+
+.compactTournamentScreen .tableBoardHead p {
+  display: none;
+}
+
+.compactTournamentScreen .controlBar {
+  position: sticky;
+  bottom: 0;
+  padding: 10px 0;
+  background: rgba(6, 30, 20, 0.96);
+}
+
+.compactTournamentScreen .controlBar button {
+  flex: 1 1 140px;
+}
+
 .topLine {
   display: flex;
   justify-content: space-between;
@@ -247,6 +284,13 @@
   gap: 8px;
 }
 
+.seatActionHint {
+  width: 100%;
+  margin: 0;
+  color: #c8d4df;
+  font-size: 13px;
+}
+
 .controlBar button {
   transition: opacity 120ms ease, filter 120ms ease, transform 120ms ease, box-shadow 120ms ease;
 }
@@ -465,5 +509,15 @@
   .payoutRow {
     grid-template-columns: 1fr;
     gap: 6px;
+  }
+}
+
+@media (max-width: 700px) {
+  .compactTournamentScreen .centerPanel {
+    min-height: 210px;
+  }
+
+  .compactTournamentScreen .heroTime {
+    font-size: 64px;
   }
 }

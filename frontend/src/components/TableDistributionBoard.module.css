@@ -8,6 +8,10 @@
   gap: 12px;
 }
 
+.compressedGrid {
+  gap: 8px;
+}
+
 .distributionCard {
   border: 1px solid rgba(70, 106, 87, 0.9);
   border-radius: 16px;
@@ -17,6 +21,10 @@
 
 .compactCard {
   padding: 12px;
+}
+
+.compressedCard {
+  padding: 8px;
 }
 
 .tableTitle {
@@ -34,6 +42,12 @@
 .compactWrap {
   width: min(320px, 100%);
   margin-bottom: 8px;
+}
+
+.compressedWrap {
+  width: min(260px, 100%);
+  aspect-ratio: 5 / 3;
+  margin: 6px auto;
 }
 
 .pokerTableHorizontal {
@@ -147,6 +161,12 @@
   min-width: 84px;
   max-width: 112px;
   padding: 7px 8px;
+}
+
+.compressedSeat {
+  min-width: 66px;
+  max-width: 94px;
+  padding: 5px 6px;
 }
 
 .seatEnter {

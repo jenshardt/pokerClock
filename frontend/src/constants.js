@@ -25,6 +25,7 @@ export const initialForm = {
   tableCount: 2,
   seatsPerTable: 8,
   hasNeutralDealer: false,
+  payoutSummaryEnabled: false,
   participantsText: 'Alice\nBob\nChris\nDave\nEve\nFrank',
   blindLevels: DEFAULT_BLIND_LEVELS,
 };

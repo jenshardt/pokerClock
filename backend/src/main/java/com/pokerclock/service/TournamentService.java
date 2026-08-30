@@ -4,7 +4,9 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pokerclock.api.TournamentSetupRequest;
 import com.pokerclock.api.TournamentStatusResponse;
+import com.pokerclock.api.TournamentPayoutSummaryEntry;
 import com.pokerclock.model.Tournament;
+import com.pokerclock.model.TournamentCompletionReason;
 import com.pokerclock.repository.TournamentRepository;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
@@ -37,11 +39,13 @@ public class TournamentService {
     };
 
     private final TournamentRepository repository;
+    private final TournamentResultArchiveService resultArchiveService;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private Long currentTournamentId;
 
-    public TournamentService(TournamentRepository repository) {
+    public TournamentService(TournamentRepository repository, TournamentResultArchiveService resultArchiveService) {
         this.repository = repository;
+        this.resultArchiveService = resultArchiveService;
     }
 
     public void setupTournament(TournamentSetupRequest request) {
@@ -55,6 +59,7 @@ public class TournamentService {
         tournament.setBlindDurationSeconds(request.getBlindDurationSeconds());
         tournament.setHasNeutralDealer(request.isHasNeutralDealer());
         tournament.setRebuyAllowed(request.isRebuyAllowed());
+        tournament.setPayoutSummaryEnabled(request.isPayoutSummaryEnabled());
         int entries = request.getParticipants() != null ? request.getParticipants().size() : 0;
         tournament.setEntries(entries);
         tournament.setPlayersLeft(entries);
@@ -64,6 +69,7 @@ public class TournamentService {
         tournament.setCreatedAt(Instant.now());
         tournament.setStatus(STATUS_READY);
         tournament.setWorkflowPhase(PHASE_PREPARATION);
+        tournament.setCompletionReason(TournamentCompletionReason.NONE);
         tournament.setResumedAt(null);
         tournament.setStartedAt(null);
         tournament.setRunning(false);
@@ -117,14 +123,21 @@ public class TournamentService {
                 new IllegalStateException("Turnier muss zuerst konfiguriert werden."));
         ensureExpectedVersion(tournament, expectedVersion);
 
-        if (STATUS_RUNNING.equals(normalizeStatus(tournament.getStatus()))) {
-            accumulateElapsedIfRunning(tournament);
-            tournament.setStatus(STATUS_ENDED);
-            tournament.setRunning(false);
-            tournament.setResumedAt(null);
+        if (TournamentCompletionReason.COMPLETED.equals(tournament.getCompletionReason())) {
+            tournament.setWorkflowPhase(PHASE_REGISTRATION);
+            repository.save(tournament);
+            return;
         }
 
+        if (STATUS_RUNNING.equals(normalizeStatus(tournament.getStatus()))) {
+            accumulateElapsedIfRunning(tournament);
+        }
+
+        tournament.setStatus(STATUS_ENDED);
+        tournament.setRunning(false);
+        tournament.setResumedAt(null);
         tournament.setWorkflowPhase(PHASE_REGISTRATION);
+        tournament.setCompletionReason(TournamentCompletionReason.ABORTED);
         repository.save(tournament);
     }
 
@@ -179,6 +192,7 @@ public class TournamentService {
         tournament.setStatus(STATUS_ENDED);
         tournament.setRunning(false);
         tournament.setResumedAt(null);
+        tournament.setCompletionReason(TournamentCompletionReason.COMPLETED);
         repository.save(tournament);
     }
 
@@ -212,6 +226,9 @@ public class TournamentService {
         String target = normalizeName(playerName);
         if (target == null || !tournament.getParticipants().contains(target)) {
             return;
+        }
+        if (!tournament.isRebuyAllowed()) {
+            throw new IllegalStateException("Rebuys sind für dieses Turnier nicht aktiviert.");
         }
 
         List<String> eliminated = tournament.getEliminatedPlayers();
@@ -345,6 +362,9 @@ public class TournamentService {
 
         Tournament tournament = maybeTournament.get();
         String status = normalizeStatus(tournament.getStatus());
+        TournamentCompletionReason completionReason = tournament.getCompletionReason() == null
+            ? TournamentCompletionReason.NONE
+            : tournament.getCompletionReason();
         long elapsedSeconds = getElapsedSeconds(tournament, status);
 
         List<ScheduleItem> schedule = parseSchedule(tournament.getBlindStructure());
@@ -361,6 +381,10 @@ public class TournamentService {
             .filter((name) -> !eliminatedPlayers.contains(name))
             .collect(Collectors.toList());
         List<TournamentStatusResponse.TableDistributionEntry> distribution = toDistributionResponse(getTableDistribution(tournament));
+        List<TournamentPayoutSummaryEntry> payoutSummary = completionReason == TournamentCompletionReason.COMPLETED
+            && tournament.isPayoutSummaryEnabled()
+            ? resultArchiveService.getPayoutSummary(tournament.getId())
+            : List.of();
 
         String nextPhase = state.isBreak
             ? "Pause"
@@ -377,6 +401,11 @@ public class TournamentService {
                 .nextItem(state.nextLabel)
                 .status(statusText)
                 .workflowPhase(resolveWorkflowPhase(tournament, status))
+                .completionReason(completionReason.name())
+                .payoutSummaryEnabled(tournament.isPayoutSummaryEnabled())
+                .rebuyAllowed(tournament.isRebuyAllowed())
+                .payoutSummary(payoutSummary)
+                .generatedAt(Instant.now())
                 .version(tournament.getVersion())
                 .remainingSeconds(state.remainingSeconds)
                 .elapsedSeconds(elapsedSeconds)

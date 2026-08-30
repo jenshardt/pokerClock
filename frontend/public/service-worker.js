@@ -1,5 +1,5 @@
-const CACHE_NAME = 'pokerclock-shell-v1';
-const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icons/pokerclock.svg'];
+const CACHE_NAME = 'pokerclock-shell-v3';
+const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icons/pokerclock-192.png', '/icons/pokerclock-512.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));

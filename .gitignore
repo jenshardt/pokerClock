@@ -28,3 +28,7 @@ yarn-error.log*
 .env
 .env.*
 !.env.example
+
+# Local Docker secrets
+/secrets/*.json
+!/secrets/users.example.json

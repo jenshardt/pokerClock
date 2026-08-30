@@ -24,8 +24,11 @@ public class Tournament {
     private int blindDurationSeconds;
     private boolean hasNeutralDealer;
     private boolean rebuyAllowed;
+    private boolean payoutSummaryEnabled;
     private String status;
     private String workflowPhase;
+    @Enumerated(EnumType.STRING)
+    private TournamentCompletionReason completionReason;
     private int entries;
     private int playersLeft;
     private int rebuys;
@@ -54,6 +57,10 @@ public class Tournament {
 
     public Long getId() {
         return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
     }
 
     public long getVersion() {
@@ -116,6 +123,14 @@ public class Tournament {
         this.rebuyAllowed = rebuyAllowed;
     }
 
+    public boolean isPayoutSummaryEnabled() {
+        return payoutSummaryEnabled;
+    }
+
+    public void setPayoutSummaryEnabled(boolean payoutSummaryEnabled) {
+        this.payoutSummaryEnabled = payoutSummaryEnabled;
+    }
+
     public boolean isHasNeutralDealer() {
         return hasNeutralDealer;
     }
@@ -138,6 +153,14 @@ public class Tournament {
 
     public void setWorkflowPhase(String workflowPhase) {
         this.workflowPhase = workflowPhase;
+    }
+
+    public TournamentCompletionReason getCompletionReason() {
+        return completionReason;
+    }
+
+    public void setCompletionReason(TournamentCompletionReason completionReason) {
+        this.completionReason = completionReason;
     }
 
     public int getEntries() {
