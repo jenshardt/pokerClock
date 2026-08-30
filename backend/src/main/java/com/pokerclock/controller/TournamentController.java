@@ -40,6 +40,18 @@ public class TournamentController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/show-tournament")
+    public ResponseEntity<Void> showTournament() {
+        tournamentService.showTournament();
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/return-to-registration")
+    public ResponseEntity<Void> returnToRegistration() {
+        tournamentService.returnToRegistration();
+        return ResponseEntity.ok().build();
+    }
+
     @PostMapping("/pause")
     public ResponseEntity<Void> pauseTournament() {
         tournamentService.pauseTournament();

@@ -22,6 +22,7 @@ public class Tournament {
     private boolean hasNeutralDealer;
     private boolean rebuyAllowed;
     private String status;
+    private String workflowPhase;
     private int entries;
     private int playersLeft;
     private int rebuys;
@@ -122,6 +123,14 @@ public class Tournament {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getWorkflowPhase() {
+        return workflowPhase;
+    }
+
+    public void setWorkflowPhase(String workflowPhase) {
+        this.workflowPhase = workflowPhase;
     }
 
     public int getEntries() {

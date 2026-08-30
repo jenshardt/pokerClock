@@ -101,4 +101,12 @@ class TournamentControllerTest {
 
         verify(tournamentService).startTournament();
     }
+
+        @Test
+        void showTournamentCallsServiceAndReturnsOk() throws Exception {
+                mockMvc.perform(post("/api/show-tournament"))
+                                .andExpect(status().isOk());
+
+                verify(tournamentService).showTournament();
+        }
 }

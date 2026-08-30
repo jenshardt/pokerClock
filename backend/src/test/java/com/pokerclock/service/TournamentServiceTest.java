@@ -86,6 +86,7 @@ class TournamentServiceTest {
         assertEquals(4, saved.getEntries());
         assertEquals(4, saved.getPlayersLeft());
         assertEquals("READY", saved.getStatus());
+        assertEquals("PREPARATION", saved.getWorkflowPhase());
         assertTrue(saved.getTableDistributionJson() != null && !saved.getTableDistributionJson().isBlank());
     }
 
@@ -101,6 +102,48 @@ class TournamentServiceTest {
         assertNotNull(tournament.getStartedAt());
         assertNotNull(tournament.getResumedAt());
         verify(repository, times(1)).save(tournament);
+    }
+
+    @Test
+    void showTournamentPersistsTournamentPhaseWithoutStartingClock() {
+        tournament.setWorkflowPhase("PREPARATION");
+        when(repository.findTopByOrderByCreatedAtDesc()).thenReturn(Optional.of(tournament));
+        when(repository.save(any(Tournament.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        tournamentService.showTournament();
+
+        assertEquals("TOURNAMENT", tournament.getWorkflowPhase());
+        assertEquals("READY", tournament.getStatus());
+        assertFalse(tournament.isRunning());
+        verify(repository).save(tournament);
+    }
+
+    @Test
+    void returnToRegistrationEndsRunningTournamentAndPersistsRegistrationPhase() {
+        tournament.setWorkflowPhase("TOURNAMENT");
+        tournament.setStatus("RUNNING");
+        tournament.setRunning(true);
+        tournament.setResumedAt(Instant.now().minusSeconds(5));
+        when(repository.findTopByOrderByCreatedAtDesc()).thenReturn(Optional.of(tournament));
+        when(repository.save(any(Tournament.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        tournamentService.returnToRegistration();
+
+        assertEquals("REGISTRATION", tournament.getWorkflowPhase());
+        assertEquals("ENDED", tournament.getStatus());
+        assertFalse(tournament.isRunning());
+        assertTrue(tournament.getAccumulatedElapsedSeconds() >= 4);
+        verify(repository).save(tournament);
+    }
+
+    @Test
+    void getStatusReturnsPersistedRegistrationPhase() {
+        tournament.setWorkflowPhase("REGISTRATION");
+        when(repository.findTopByOrderByCreatedAtDesc()).thenReturn(Optional.of(tournament));
+
+        TournamentStatusResponse response = tournamentService.getStatus();
+
+        assertEquals("REGISTRATION", response.getWorkflowPhase());
     }
 
     @Test
@@ -197,6 +240,17 @@ class TournamentServiceTest {
 
         TournamentStatusResponse response = tournamentService.getStatus();
 
+        assertEquals("REGISTRATION", response.getWorkflowPhase());
         assertEquals("Kein Turnier konfiguriert", response.getMessage());
+    }
+
+    @Test
+    void getStatusReturnsPersistedPreparationPhase() {
+        tournament.setWorkflowPhase("PREPARATION");
+        when(repository.findTopByOrderByCreatedAtDesc()).thenReturn(Optional.of(tournament));
+
+        TournamentStatusResponse response = tournamentService.getStatus();
+
+        assertEquals("PREPARATION", response.getWorkflowPhase());
     }
 }

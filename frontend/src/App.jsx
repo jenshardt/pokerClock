@@ -7,6 +7,16 @@ import RegistrationPage from './pages/RegistrationPage';
 import { createSoundManager } from './sound';
 import TournamentPage from './pages/TournamentPage';
 
+function toStep(workflowPhase) {
+  if (workflowPhase === 'PREPARATION') {
+    return 'preparation';
+  }
+  if (workflowPhase === 'TOURNAMENT') {
+    return 'tournament';
+  }
+  return 'registration';
+}
+
 function App() {
   const [step, setStep] = useState('registration');
   const [status, setStatus] = useState(null);
@@ -237,7 +247,7 @@ function App() {
   }, [currentUser]);
 
   useEffect(() => {
-    if (!currentUser || step !== 'tournament') {
+    if (!currentUser || (step !== 'preparation' && step !== 'tournament')) {
       return undefined;
     }
 
@@ -261,6 +271,7 @@ function App() {
       if (Array.isArray(json?.distribution)) {
         setDistribution(json.distribution);
       }
+      setStep(toStep(json?.workflowPhase));
 
       if (!json?.running || !json?.currentBlind || !String(json.currentBlind).includes('/')) {
         return;
@@ -491,54 +502,6 @@ function App() {
     }
   };
 
-  const rotatePlayersFromIndex = (players, startIndex) => ([
-    ...players.slice(startIndex),
-    ...players.slice(0, startIndex),
-  ]);
-
-  const createDistribution = (players, tableCount, hasNeutralDealer) => {
-    const shuffled = [...players].sort(() => Math.random() - 0.5);
-    const tables = Array.from({ length: tableCount }, (_, idx) => ({
-      tableName: `Tisch ${idx + 1}`,
-      players: [],
-      neutralDealer: hasNeutralDealer,
-      dealer: null,
-      smallBlind: null,
-      bigBlind: null,
-    }));
-
-    shuffled.forEach((player, idx) => {
-      tables[idx % tableCount].players.push(player);
-    });
-
-    return tables.map((table) => {
-      if (table.players.length < 2) {
-        return table;
-      }
-
-      const startIndex = Math.floor(Math.random() * table.players.length);
-      const orderedPlayers = rotatePlayersFromIndex(table.players, startIndex);
-
-      if (hasNeutralDealer) {
-        return {
-          ...table,
-          players: orderedPlayers,
-          dealer: null,
-          smallBlind: orderedPlayers[0],
-          bigBlind: orderedPlayers[1],
-        };
-      }
-
-      return {
-        ...table,
-        players: orderedPlayers,
-        dealer: orderedPlayers[0],
-        smallBlind: orderedPlayers[1],
-        bigBlind: orderedPlayers[2 % orderedPlayers.length],
-      };
-    });
-  };
-
   const createTournament = async () => {
     const saved = await saveTemplate();
     const templateId = saved?.id || savedTemplateId;
@@ -556,12 +519,9 @@ function App() {
         return;
       }
 
-      const seating = createDistribution(participants, Number(form.tableCount), form.hasNeutralDealer);
-      setDistribution(seating);
-      setStep('preparation');
       setActiveTablePopup(null);
       setMessage('');
-      fetchStatus();
+      await fetchStatus();
     } catch (error) {
       if (error.message !== 'UNAUTHORIZED') {
         console.error(error);
@@ -638,10 +598,21 @@ function App() {
   };
 
   const confirmStartTournament = async () => {
-    setCreateTournamentConfirmOpen(false);
-    setStep('tournament');
-    setMessage('');
-    await fetchStatus();
+    try {
+      const response = await apiFetch('/api/show-tournament', { method: 'POST' });
+      if (!response.ok) {
+        setMessage('Wechsel zur Turniersteuerung fehlgeschlagen.');
+        return;
+      }
+      setCreateTournamentConfirmOpen(false);
+      setMessage('');
+      await fetchStatus();
+    } catch (error) {
+      if (error.message !== 'UNAUTHORIZED') {
+        console.error(error);
+        setMessage('Backend ist nicht erreichbar. Bitte Verbindung prüfen.');
+      }
+    }
   };
 
   const shuffleUpAndDeal = async () => {
@@ -664,13 +635,11 @@ function App() {
   };
 
   const confirmBackToConfiguration = async () => {
-    if (status?.status !== 'Turnier beendet') {
-      await endTournament();
+    const success = await returnToRegistration();
+    if (success) {
+      setAbortTournamentConfirmOpen(false);
+      setMessage('Turnier wurde abgebrochen.');
     }
-    setAbortTournamentConfirmOpen(false);
-    setStep('registration');
-    setMessage('Turnier wurde abgebrochen.');
-    await fetchStatus();
   };
 
   const runTournamentAction = async (endpoint, payload = null) => {
@@ -711,6 +680,7 @@ function App() {
   const addRebuy = async (playerName) => runTournamentAction('/api/rebuy', { playerName });
   const balanceTables = async () => runTournamentAction('/api/table/balance');
   const createFinalTable = async () => runTournamentAction('/api/table/final-table');
+  const returnToRegistration = async () => runTournamentAction('/api/return-to-registration');
 
   const saveTournamentResult = async (payload) => {
     const response = await apiFetch('/api/results', {
@@ -1006,8 +976,8 @@ function App() {
           distribution={distribution}
           activeTablePopup={activeTablePopup}
           setActiveTablePopup={setActiveTablePopup}
-          setStep={setStep}
           startTournament={startTournament}
+          requestBackToConfiguration={requestBackToConfiguration}
           onSeatPlaced={handleSeatPlacementAnnouncement}
         />
       )}
@@ -1023,7 +993,6 @@ function App() {
             reentryPriceEuro: form.reentryPriceEuro,
             participants,
           }}
-          setStep={setStep}
           pauseTournament={pauseTournament}
           resumeTournament={resumeTournament}
           endTournament={endTournament}
@@ -1036,6 +1005,7 @@ function App() {
           actionBusy={tournamentActionBusy}
           shuffleUpAndDeal={shuffleUpAndDeal}
           requestBackToConfiguration={requestBackToConfiguration}
+          returnToRegistration={returnToRegistration}
         />
       )}
 

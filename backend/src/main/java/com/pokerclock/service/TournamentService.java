@@ -26,6 +26,9 @@ public class TournamentService {
     private static final String STATUS_RUNNING = "RUNNING";
     private static final String STATUS_PAUSED = "PAUSED";
     private static final String STATUS_ENDED = "ENDED";
+    private static final String PHASE_REGISTRATION = "REGISTRATION";
+    private static final String PHASE_PREPARATION = "PREPARATION";
+    private static final String PHASE_TOURNAMENT = "TOURNAMENT";
     private static final int BALANCE_MIN_DIFFERENCE = 2;
 
     private static final TypeReference<List<TableState>> TABLE_STATE_TYPE = new TypeReference<>() {
@@ -58,6 +61,7 @@ public class TournamentService {
         tournament.setEliminatedPlayers(new ArrayList<>());
         tournament.setCreatedAt(Instant.now());
         tournament.setStatus(STATUS_READY);
+        tournament.setWorkflowPhase(PHASE_PREPARATION);
         tournament.setResumedAt(null);
         tournament.setStartedAt(null);
         tournament.setRunning(false);
@@ -86,6 +90,33 @@ public class TournamentService {
         tournament.setResumedAt(now);
         tournament.setStatus(STATUS_RUNNING);
         tournament.setRunning(true);
+        repository.save(tournament);
+    }
+
+    public void showTournament() {
+        Tournament tournament = getCurrentTournament().orElseThrow(() ->
+                new IllegalStateException("Turnier muss zuerst konfiguriert werden."));
+
+        if (STATUS_ENDED.equals(normalizeStatus(tournament.getStatus()))) {
+            throw new IllegalStateException("Turnier ist bereits beendet.");
+        }
+
+        tournament.setWorkflowPhase(PHASE_TOURNAMENT);
+        repository.save(tournament);
+    }
+
+    public void returnToRegistration() {
+        Tournament tournament = getCurrentTournament().orElseThrow(() ->
+                new IllegalStateException("Turnier muss zuerst konfiguriert werden."));
+
+        if (STATUS_RUNNING.equals(normalizeStatus(tournament.getStatus()))) {
+            accumulateElapsedIfRunning(tournament);
+            tournament.setStatus(STATUS_ENDED);
+            tournament.setRunning(false);
+            tournament.setResumedAt(null);
+        }
+
+        tournament.setWorkflowPhase(PHASE_REGISTRATION);
         repository.save(tournament);
     }
 
@@ -285,6 +316,7 @@ public class TournamentService {
         Optional<Tournament> maybeTournament = getCurrentTournament();
         if (maybeTournament.isEmpty()) {
             return TournamentStatusResponse.builder()
+                    .workflowPhase(PHASE_REGISTRATION)
                     .message("Kein Turnier konfiguriert")
                     .build();
         }
@@ -322,6 +354,7 @@ public class TournamentService {
                 .currentLevelNumber(state.currentLevelNumber)
                 .nextItem(state.nextLabel)
                 .status(statusText)
+                .workflowPhase(resolveWorkflowPhase(tournament, status))
                 .remainingSeconds(state.remainingSeconds)
                 .elapsedSeconds(elapsedSeconds)
                 .timeToNextBreakSeconds(timeToNextBreakSeconds)
@@ -346,6 +379,16 @@ public class TournamentService {
         if (!STATUS_PAUSED.equals(normalizeStatus(tournament.getStatus()))) {
             throw new IllegalStateException("Aktion nur im pausierten Turnier möglich.");
         }
+    }
+
+    private String resolveWorkflowPhase(Tournament tournament, String status) {
+        String workflowPhase = tournament.getWorkflowPhase();
+        if (PHASE_REGISTRATION.equals(workflowPhase)
+                || PHASE_PREPARATION.equals(workflowPhase)
+                || PHASE_TOURNAMENT.equals(workflowPhase)) {
+            return workflowPhase;
+        }
+        return STATUS_READY.equals(status) ? PHASE_PREPARATION : PHASE_TOURNAMENT;
     }
 
     private List<TableState> createInitialDistribution(List<String> participants, int tableCount, boolean hasNeutralDealer) {

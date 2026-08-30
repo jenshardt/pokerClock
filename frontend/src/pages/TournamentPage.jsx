@@ -67,7 +67,6 @@ export default function TournamentPage({
   status,
   distribution,
   tournamentConfig,
-  setStep,
   pauseTournament,
   resumeTournament,
   endTournament,
@@ -80,6 +79,7 @@ export default function TournamentPage({
   actionBusy,
   shuffleUpAndDeal,
   requestBackToConfiguration,
+  returnToRegistration,
 }) {
   const statusText = status?.status || 'Turnier bereit';
   const isPaused = statusText === 'Turnier pausiert';
@@ -359,12 +359,30 @@ export default function TournamentPage({
     return Math.abs(totals.amount - prizePool) <= 0.01;
   }, [duplicateSelectedPlayers, hasPrizePool, payoutRows, payoutValueMode, prizePool, totals.amount, totals.percent]);
 
+  useEffect(() => {
+    if (!isEnded || summaryOpen) {
+      return;
+    }
+
+    const defaultMode = Number(status?.playersLeft || 0) >= 3 ? 'preset3' : 'preset2';
+    const defaultDynamic = Math.max(2, Math.min(maxPlaces, Number(status?.playersLeft || 4) || 4));
+
+    setPayoutMode(defaultMode);
+    setPayoutValueMode('percent');
+    setDynamicPlaceCount(defaultDynamic);
+    setPayoutRows(createRowsForMode(defaultMode, defaultDynamic));
+    setPersistResult(false);
+    setSummaryMessage('');
+    setEndConfirmOpen(false);
+    setSummaryOpen(true);
+  }, [isEnded, summaryOpen]);
+
   const handleBackToConfiguration = async () => {
     setSummaryMessage('');
 
     if (!persistResult) {
       setSummaryOpen(false);
-      setStep('registration');
+      await returnToRegistration();
       return;
     }
 
@@ -401,7 +419,7 @@ export default function TournamentPage({
           : [],
       });
       setSummaryOpen(false);
-      setStep('registration');
+      await returnToRegistration();
     } catch (error) {
       setSummaryMessage('Ergebnis konnte nicht gespeichert werden. Bitte erneut versuchen oder ohne Speichern fortfahren.');
     } finally {

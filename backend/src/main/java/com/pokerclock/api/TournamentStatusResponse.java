@@ -12,6 +12,7 @@ public class TournamentStatusResponse {
     private Integer currentLevelNumber;
     private String nextItem;
     private String status;
+    private String workflowPhase;
     private long remainingSeconds;
     private long elapsedSeconds;
     private long timeToNextBreakSeconds;
@@ -88,6 +89,14 @@ public class TournamentStatusResponse {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getWorkflowPhase() {
+        return workflowPhase;
+    }
+
+    public void setWorkflowPhase(String workflowPhase) {
+        this.workflowPhase = workflowPhase;
     }
 
     public long getRemainingSeconds() {
@@ -262,6 +271,11 @@ public class TournamentStatusResponse {
 
         public Builder status(String status) {
             response.status = status;
+            return this;
+        }
+
+        public Builder workflowPhase(String workflowPhase) {
+            response.workflowPhase = workflowPhase;
             return this;
         }
 

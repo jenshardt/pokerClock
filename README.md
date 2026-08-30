@@ -12,12 +12,13 @@ Eine auf **Spring Boot** + **React** basierende Webanwendung zur digitalen Vorbe
 4. [Build & Entwicklung](#-build--entwicklung)
 5. [Docker: Build, Deploy & Start](#-docker-build-deploy--start)
 6. [Raspberry Pi & Android-PWA MVP](#-raspberry-pi--android-pwa-mvp)
-7. [Screenshots der Anwendung](#-screenshots-der-anwendung)
-8. [Funktionen & Features](#-funktionen--features)
-9. [Exemplarischer Turnierablauf](#-exemplarischer-turnierablauf)
-10. [Beiträge & Änderungswünsche](#beiträge--änderungswünsche)
-11. [Lizenz](#lizenz)
-12. [Haftungsausschluss](#haftungsausschluss)
+7. [Aktueller Entwicklungsstand](#-aktueller-entwicklungsstand)
+8. [Screenshots der Anwendung](#-screenshots-der-anwendung)
+9. [Funktionen & Features](#-funktionen--features)
+10. [Exemplarischer Turnierablauf](#-exemplarischer-turnierablauf)
+11. [Beiträge & Änderungswünsche](#beiträge--änderungswünsche)
+12. [Lizenz](#lizenz)
+13. [Haftungsausschluss](#-haftungsausschluss)
 
 ---
 
@@ -57,7 +58,7 @@ PokerClock folgt einer klassischen **Client-Server-Architektur**:
 
 ### Persistenz & Datenbank
 - **PostgreSQL** läuft im Docker Container
-- Automatische Schemamigrationen via Flyway/Hibernate
+- Hibernate-Schemaaktualisierung und kompatible Schema-Patches für vorhandene Datenvolumes
 - Volumes für Datenpersistenz über Container-Restarts
 
 ### Authentifizierung
@@ -216,11 +217,44 @@ mvn clean package -DskipTests
 ### Logs in Docker Desktop
 - Klick auf einen Service → **Logs** Tab → Echtzeit-Ausgabe
 
+### Build und Deploy auf dem Raspberry Pi
+
+Die produktive Zielumgebung ist ein Raspberry Pi 5 mit 64-Bit-Raspberry-Pi-OS (`aarch64`) und Docker Engine für `linux/arm64`. Der System-Nginx terminiert HTTPS; Docker Compose veröffentlicht PokerClock ausschließlich auf dem lokalen Host-Port `127.0.0.1:8085`.
+
+1. **Aktuellen Quellcode auf den Pi übertragen.** Verwende dafür den etablierten Weg des Projekts, etwa `git pull` in einem bereits geklonten Repository oder eine Kopie per `scp`. Die vorhandene Datei `.env` auf dem Pi nicht überschreiben.
+2. **Zum Projekt wechseln und die Konfiguration prüfen:**
+   ```bash
+   cd ~/pokerClock
+   test -f .env && echo ".env vorhanden" || cp .env.example .env
+   nano .env
+   ```
+   `POSTGRES_PASSWORD` und `DB_PASSWORD` müssen identisch sein. Für die erste Anmeldung müssen zusätzlich `APP_SEED_ADMIN_USERNAME` und `APP_SEED_ADMIN_PASSWORD` gesetzt sein.
+3. **Images für ARM bauen und Container starten:**
+   ```bash
+   docker compose up --build -d
+   ```
+4. **Start und Backend-Gesundheit prüfen:**
+   ```bash
+   docker compose ps
+   docker compose exec backend curl -f http://localhost:8081/actuator/health
+   ```
+5. **Den externen Zugriff prüfen:**
+   ```bash
+   curl --cacert /etc/nginx/certs/home-ca.crt -I https://pokerclock.local
+   ```
+   Erwartet wird eine erfolgreiche HTTP-Antwort, nicht `502 Bad Gateway`.
+6. **Bei einem Fehler die Containerprotokolle lesen:**
+   ```bash
+   docker compose logs --tail=100 db backend frontend
+   ```
+
+Ein erneutes `docker compose up --build -d` aktualisiert die Container, ohne das Docker-Volume `db_data` zu löschen. `docker compose down -v` entfernt dagegen auch die persistierten Daten und darf nicht für ein normales Update verwendet werden.
+
 ---
 
 ## Raspberry Pi & Android-PWA MVP
 
-Dieser Abschnitt beschreibt die beschlossene, noch umzusetzende Erweiterung. PokerClock soll auf einem Raspberry Pi 5 mit 64-Bit-Raspberry-Pi-OS im Heimnetz unter `http://pokerclock.local` laufen. Die Android-Steuerung wird zunächst als installierbare Progressive Web App (PWA) umgesetzt: Sie verwendet dieselbe React-Anwendung und dieselbe Backend-API wie der Browser und benötigt weder einen App Store noch einen kostenpflichtigen Dienst.
+PokerClock läuft auf einem Raspberry Pi 5 mit 64-Bit-Raspberry-Pi-OS im Heimnetz unter `https://pokerclock.local`. Die Android-Steuerung wird zunächst über dieselbe mobil nutzbare React-Anwendung wie im Browser bereitgestellt. Die Installation als Progressive Web App (PWA) ist ein nachfolgender Arbeitsschritt und benötigt weder einen App Store noch einen kostenpflichtigen Dienst.
 
 ### Zieltopologie
 
@@ -232,32 +266,45 @@ Dieser Abschnitt beschreibt die beschlossene, noch umzusetzende Erweiterung. Pok
 ```text
 Laptop oder Android-PWA
    |
-http://pokerclock.local
+https://pokerclock.local
    |
 System-Nginx mit HTTPS auf dem Raspberry Pi
    |
 127.0.0.1:8085 -> Frontend-Nginx -> /api -> Spring Boot -> PostgreSQL
 ```
 
-### Umsetzungsschritte
+### Noch offene Umsetzungsschritte
 
-1. **Raspberry-Pi-Deployment validieren:** Docker Compose v2 und die 64-Bit-ARM-Architektur prüfen; Backend- und Frontend-Images mit `linux/arm64` bauen und auf dem Pi starten.
-2. **Compose für System-Nginx vorbereiten:** Nur den Frontend-Port an `127.0.0.1` binden, externe Portfreigaben für Backend und Datenbank entfernen, Healthchecks und persistentes PostgreSQL-Volume prüfen. Der System-Nginx erhält einen Virtual Host für `pokerclock.local` und leitet die Forwarded-Header weiter.
-3. **Server als Quelle des Turnierzustands etablieren:** Die Phasen Registrierung, Vorbereitung, bereit, läuft, pausiert und beendet im Backend persistieren. Die Tischverteilung wird ausschließlich serverseitig erzeugt und vom Client gelesen.
-4. **Parallele Bedienung absichern:** Das Turnier erhält eine Versionsnummer; jede schreibende Aktion wird transaktional ausgeführt und prüft die erwartete Version. Bei einem veralteten Zustand antwortet das Backend mit `409 Conflict` und die Clients laden den Status erneut.
-5. **Browser auf geteilten Zustand umstellen:** React leitet die sichtbare Phase aus dem Serverstatus ab und aktualisiert Status und Tischverteilung auch während der Vorbereitung. Der Browser bleibt dabei ein Client ohne fachlich maßgeblichen lokalen Zustand.
-6. **PWA installierbar machen:** Web-App-Manifest, Icons und Service Worker ergänzen. Android-Nutzende können die Anwendung danach über einen kompatiblen Browser installieren und wie eine eigene App starten.
-7. **Mobile Turniersteuerung liefern:** Für kleine Displays eine fokussierte Ansicht mit Uhr, Blindstufen, Spielerzahlen sowie Pause, Fortsetzen, Beenden, Seat Open und Rebuy implementieren. Registrierung und Tischvorbereitung bleiben im MVP auf dem Laptop.
-8. **Mehrgerätebetrieb nachweisen:** Integrationstests für Zustandswechsel und Versionskonflikte ergänzen sowie einen manuellen Test mit Browser und Android-PWA gegen den Raspberry Pi durchführen.
+1. **Versionskonflikte absichern:** Das Turnier erhält eine Versionsnummer; jede schreibende Aktion prüft die erwartete Version. Bei einem veralteten Zustand antwortet das Backend mit `409 Conflict` und der Client lädt den Status erneut.
+2. **PWA installierbar machen:** Web-App-Manifest, Icons und Service Worker ergänzen. Android-Nutzende können die Anwendung danach über einen kompatiblen Browser installieren und wie eine eigene App starten.
+3. **Mobile Turniersteuerung liefern:** Für kleine Displays eine fokussierte Ansicht mit Uhr, Blindstufen, Spielerzahlen sowie Pause, Fortsetzen, Beenden, Seat Open und Rebuy implementieren. Registrierung und Tischvorbereitung bleiben im MVP auf dem Laptop.
+4. **Mehrgerätebetrieb erweitern und nachweisen:** Integrationstests für Versionskonflikte ergänzen sowie Browser- und Android-PWA-Szenarien gegen den Raspberry Pi durchführen.
 
 ### MVP-Regeln
 
 - Mehrere berechtigte Geräte dürfen gleichzeitig verbunden sein; ein exklusiver Steuerungs-Lock ist nicht Bestandteil des MVP.
-- Der Server entscheidet über gültige Zustandswechsel. Clients zeigen bei Konflikten den neu geladenen Zustand an.
-- Eine PWA benötigt im MVP eine Verbindung zum Heimnetz und zum Raspberry Pi; Offline-Steuerung gehört nicht zum Umfang.
+- Eine PWA benötigt eine Verbindung zum Heimnetz und zum Raspberry Pi; Offline-Steuerung gehört nicht zum Umfang.
 - Die spätere Entwicklung einer nativen Android-App bleibt möglich, weil sie denselben versionierten API-Vertrag verwenden kann.
 
 ---
+
+## Aktueller Entwicklungsstand
+
+### Umgesetzt
+
+- Docker-Deployment auf dem Raspberry Pi über `linux/arm64`, lokaler Frontend-Port `127.0.0.1:8085`, System-Nginx, HTTPS und `dnsmasq` für `pokerclock.local`.
+- Persistierte Workflow-Phasen `REGISTRATION`, `PREPARATION` und `TOURNAMENT`. Neu verbundene Browser leiten ihre Ansicht aus `GET /api/status` ab.
+- Serverseitig erzeugte Tischverteilung; der Client erzeugt keine fachlich maßgebliche Zufallsverteilung.
+- Gemeinsame Ansicht bei Übergängen zwischen Vorbereitung, Turniersteuerung und Registrierung.
+- Nach einem Turnierende erscheint die Zusammenfassung auf allen verbundenen Clients.
+- Sitzansagen werden nicht mehr bei jedem Status-Poll neu gestartet.
+- Backend-Tests für Workflow-Phasen und Übergänge. Stand dieses Entwicklungsschritts: 37 Tests erfolgreich.
+
+### Noch nicht umgesetzt
+
+- Optimistische Versionsprüfung und `409 Conflict` bei gleichzeitig veralteten Bedienaktionen.
+- Installierbare PWA mit Web-App-Manifest, Icons und Service Worker.
+- Speziell verdichtete mobile Turniersteuerung.
 
 ## 🔐 Sicherheits- & Deployment-Checkliste (Pflicht vor Veröffentlichung)
 

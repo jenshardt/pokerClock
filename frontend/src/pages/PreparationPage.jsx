@@ -7,8 +7,8 @@ export default function PreparationPage({
   distribution,
   activeTablePopup,
   setActiveTablePopup,
-  setStep,
   startTournament,
+  requestBackToConfiguration,
   onSeatPlaced,
 }) {
   const seatLayouts = useMemo(
@@ -24,6 +24,11 @@ export default function PreparationPage({
       return start;
     });
   }, [seatLayouts]);
+
+  const distributionSignature = useMemo(
+    () => JSON.stringify(distribution),
+    [distribution]
+  );
 
   useEffect(() => {
     if (typeof onSeatPlaced !== 'function') {
@@ -68,7 +73,7 @@ export default function PreparationPage({
     return () => {
       timers.forEach((timerId) => window.clearTimeout(timerId));
     };
-  }, [distribution, onSeatPlaced, seatLayouts, seatStartOffsets]);
+  }, [distributionSignature, onSeatPlaced]);
 
   return (
     <section className="screen card">
@@ -81,7 +86,7 @@ export default function PreparationPage({
       />
 
       <div className="toolbar">
-        <button type="button" className="ghost-button" onClick={() => setStep('registration')}>Zurück zur Tunierkonfiguration</button>
+        <button type="button" className="ghost-button" onClick={requestBackToConfiguration}>Zurück zur Tunierkonfiguration</button>
         <button type="button" className="primary-button" onClick={startTournament}>Turnier kann beginnen</button>
       </div>
     </section>

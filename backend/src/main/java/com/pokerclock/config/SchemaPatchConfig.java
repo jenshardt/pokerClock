@@ -13,6 +13,7 @@ public class SchemaPatchConfig {
         return args -> {
             // Keep schema compatible with existing Docker volumes after adding new tournament runtime fields.
             jdbcTemplate.execute("ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS status varchar(32) DEFAULT 'READY'");
+            jdbcTemplate.execute("ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS workflow_phase varchar(32)");
             jdbcTemplate.execute("ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS entries integer DEFAULT 0");
             jdbcTemplate.execute("ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS players_left integer DEFAULT 0");
             jdbcTemplate.execute("ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS rebuys integer DEFAULT 0");
