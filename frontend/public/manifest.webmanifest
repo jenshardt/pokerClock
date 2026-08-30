@@ -1,0 +1,19 @@
+{
+  "name": "All Inners PokerClock",
+  "short_name": "PokerClock",
+  "description": "Pokerturniere vorbereiten und steuern.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#061b14",
+  "theme_color": "#0b2f1b",
+  "icons": [
+    {
+      "src": "/icons/pokerclock.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

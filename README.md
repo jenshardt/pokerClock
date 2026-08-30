@@ -250,6 +250,16 @@ Die produktive Zielumgebung ist ein Raspberry Pi 5 mit 64-Bit-Raspberry-Pi-OS (`
 
 Ein erneutes `docker compose up --build -d` aktualisiert die Container, ohne das Docker-Volume `db_data` zu löschen. `docker compose down -v` entfernt dagegen auch die persistierten Daten und darf nicht für ein normales Update verwendet werden.
 
+### PokerClock auf Android installieren
+
+Nach einem erfolgreichen Deploy kann PokerClock im Android-Browser als eigenständige Anwendung installiert werden:
+
+1. `https://pokerclock.local` in Chrome auf dem Android-Gerät öffnen und anmelden.
+2. Im Chrome-Menü **App installieren** beziehungsweise **Zum Startbildschirm hinzufügen** wählen.
+3. Die Installation bestätigen. PokerClock erscheint anschließend mit eigenem Icon und startet ohne Browser-Adressleiste.
+
+Die Installation setzt voraus, dass Android dem Zertifikat der Home-CA vertraut und das Gerät im Heimnetz `pokerclock.local` auflösen kann. Bei einem Update wird die PWA beim nächsten Aufruf automatisch aktualisiert. Für eine vollständige Aktualisierung kann die Anwendung einmal geschlossen und erneut geöffnet werden.
+
 ---
 
 ## Raspberry Pi & Android-PWA MVP
@@ -275,9 +285,8 @@ System-Nginx mit HTTPS auf dem Raspberry Pi
 
 ### Noch offene Umsetzungsschritte
 
-1. **PWA installierbar machen:** Web-App-Manifest, Icons und Service Worker ergänzen. Android-Nutzende können die Anwendung danach über einen kompatiblen Browser installieren und wie eine eigene App starten.
-2. **Mobile Turniersteuerung liefern:** Für kleine Displays eine fokussierte Ansicht mit Uhr, Blindstufen, Spielerzahlen sowie Pause, Fortsetzen, Beenden, Seat Open und Rebuy implementieren. Registrierung und Tischvorbereitung bleiben im MVP auf dem Laptop.
-3. **Mehrgerätebetrieb erweitern und nachweisen:** Browser- und Android-PWA-Szenarien gegen den Raspberry Pi durchführen.
+1. **Mobile Turniersteuerung liefern:** Für kleine Displays eine fokussierte Ansicht mit Uhr, Blindstufen, Spielerzahlen sowie Pause, Fortsetzen, Beenden, Seat Open und Rebuy implementieren. Registrierung und Tischvorbereitung bleiben im MVP auf dem Laptop.
+2. **Mehrgerätebetrieb erweitern und nachweisen:** Browser- und Android-PWA-Szenarien gegen den Raspberry Pi durchführen.
 
 ### MVP-Regeln
 
@@ -298,11 +307,11 @@ System-Nginx mit HTTPS auf dem Raspberry Pi
 - Nach einem Turnierende erscheint die Zusammenfassung auf allen verbundenen Clients.
 - Sitzansagen werden nicht mehr bei jedem Status-Poll neu gestartet.
 - Optimistische Versionsprüfung mit JPA-`@Version`: Jede schreibende Turnieraktion sendet die aus dem Status gelesene Revision im `If-Match`-Header. Veraltete Aktionen werden mit `409 Conflict` abgewiesen; der Client lädt den gemeinsamen Status erneut.
+- Installierbare PWA mit Web-App-Manifest, App-Icon und Service Worker für `https://pokerclock.local`.
 - Backend-Tests für Workflow-Phasen, Übergänge und Versionskonflikte. Stand dieses Entwicklungsschritts: 40 Tests erfolgreich.
 
 ### Noch nicht umgesetzt
 
-- Installierbare PWA mit Web-App-Manifest, Icons und Service Worker.
 - Speziell verdichtete mobile Turniersteuerung.
 
 ## 🔐 Sicherheits- & Deployment-Checkliste (Pflicht vor Veröffentlichung)
