@@ -2,6 +2,19 @@
 
 Eine auf **Spring Boot** + **React** basierende Webanwendung zur digitalen Vorbereitung, Durchführung und Verwaltung von Pokerturnieren mit Live-Tischverteilung, Blindstruktur-Verwaltung, kontrolliertem Turnierstart per **Shuffle Up and Deal**, manuellem Tischmanagement und abschließender Ergebnisregistrierung.
 
+## ToDos
+
+- Build und Deploy automatisieren
+  - scp -r .\pokerClock <USER>@192.168.178.58:/home/<USER>/
+- Zeit läuft auf Tablet immer noch anders als auf dem Handy oder dem Laptop
+- View Table
+  - Anzeige an View von Admin anpassen (Daten / Stats links und rechts der Zeit)
+  - Bei Tuniervorbereitung "Tisch x" groß in der Mitte des Bildschirms platzieren
+  - "Tisch 1", "Tisch 2", "Tisch 3", ... auswählbar, solange in der Tuniervorbereitung nicht anders gesetzt - wenn dieser Tisch nicht vergeben wird, dann Anzeige "Tisch nicht in Nutzung!"
+- View Floorman
+  - Weiter "zusammendampfen", z.B. indem die Zeit / Blindstufen aufgeklappt werden können
+- View Admin 
+
 ---
 
 ## 📋 Inhaltsverzeichnis
