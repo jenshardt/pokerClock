@@ -13,6 +13,9 @@ public class Tournament {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Version
+    private long version;
+
     private String tournamentName;
     private int tableCount;
     private int seatsPerTable;
@@ -51,6 +54,10 @@ public class Tournament {
 
     public Long getId() {
         return id;
+    }
+
+    public long getVersion() {
+        return version;
     }
 
     public String getTournamentName() {

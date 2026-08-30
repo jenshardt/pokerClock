@@ -5,6 +5,7 @@ import com.pokerclock.api.PlayerActionRequest;
 import com.pokerclock.api.TournamentStatusResponse;
 import com.pokerclock.service.TournamentResultArchiveService;
 import com.pokerclock.service.TournamentService;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -67,19 +68,20 @@ class TournamentControllerTest {
         request.setPlayerName("Alice");
 
         mockMvc.perform(post("/api/seat-open")
+                        .header("If-Match", 0)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());
 
-        verify(tournamentService).seatOpen("Alice");
+        verify(tournamentService).seatOpen("Alice", 0);
     }
 
     @Test
     void balanceTablesReturnsConflictWhenServiceThrowsIllegalState() throws Exception {
         doThrow(new IllegalStateException("Aktion nur im pausierten Turnier möglich."))
-                .when(tournamentService).balanceTables();
+                .when(tournamentService).balanceTables(0);
 
-        mockMvc.perform(post("/api/table/balance"))
+        mockMvc.perform(post("/api/table/balance").header("If-Match", 0))
                 .andExpect(status().isConflict())
                 .andExpect(content().string("Aktion nur im pausierten Turnier möglich."));
     }
@@ -87,26 +89,36 @@ class TournamentControllerTest {
     @Test
     void createFinalTableReturnsConflictWhenServiceThrowsIllegalState() throws Exception {
         doThrow(new IllegalStateException("Final Table ist erst möglich, wenn die verbleibenden Spieler auf einen Tisch passen."))
-                .when(tournamentService).createFinalTable();
+                .when(tournamentService).createFinalTable(0);
 
-        mockMvc.perform(post("/api/table/final-table"))
+        mockMvc.perform(post("/api/table/final-table").header("If-Match", 0))
                 .andExpect(status().isConflict())
                 .andExpect(content().string("Final Table ist erst möglich, wenn die verbleibenden Spieler auf einen Tisch passen."));
     }
 
     @Test
     void startCallsServiceAndReturnsOk() throws Exception {
-        mockMvc.perform(post("/api/start"))
+        mockMvc.perform(post("/api/start").header("If-Match", 0))
                 .andExpect(status().isOk());
 
-        verify(tournamentService).startTournament();
+        verify(tournamentService).startTournament(0);
     }
 
-        @Test
-        void showTournamentCallsServiceAndReturnsOk() throws Exception {
-                mockMvc.perform(post("/api/show-tournament"))
-                                .andExpect(status().isOk());
+    @Test
+    void showTournamentCallsServiceAndReturnsOk() throws Exception {
+        mockMvc.perform(post("/api/show-tournament").header("If-Match", 0))
+                .andExpect(status().isOk());
 
-                verify(tournamentService).showTournament();
-        }
+        verify(tournamentService).showTournament(0);
+    }
+
+    @Test
+    void pauseReturnsConflictForStaleVersion() throws Exception {
+        doThrow(new OptimisticLockingFailureException("Turnier wurde auf einem anderen Gerät geändert."))
+                .when(tournamentService).pauseTournament(0);
+
+        mockMvc.perform(post("/api/pause").header("If-Match", 0))
+                .andExpect(status().isConflict())
+                .andExpect(content().string("Turnier wurde auf einem anderen Gerät geändert."));
+    }
 }

@@ -6,6 +6,7 @@ import com.pokerclock.api.TournamentSetupRequest;
 import com.pokerclock.api.TournamentStatusResponse;
 import com.pokerclock.model.Tournament;
 import com.pokerclock.repository.TournamentRepository;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -95,7 +96,7 @@ class TournamentServiceTest {
         when(repository.findTopByOrderByCreatedAtDesc()).thenReturn(Optional.of(tournament));
         when(repository.save(any(Tournament.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        tournamentService.startTournament();
+        tournamentService.startTournament(0);
 
         assertEquals("RUNNING", tournament.getStatus());
         assertTrue(tournament.isRunning());
@@ -110,7 +111,7 @@ class TournamentServiceTest {
         when(repository.findTopByOrderByCreatedAtDesc()).thenReturn(Optional.of(tournament));
         when(repository.save(any(Tournament.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        tournamentService.showTournament();
+        tournamentService.showTournament(0);
 
         assertEquals("TOURNAMENT", tournament.getWorkflowPhase());
         assertEquals("READY", tournament.getStatus());
@@ -127,7 +128,7 @@ class TournamentServiceTest {
         when(repository.findTopByOrderByCreatedAtDesc()).thenReturn(Optional.of(tournament));
         when(repository.save(any(Tournament.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        tournamentService.returnToRegistration();
+        tournamentService.returnToRegistration(0);
 
         assertEquals("REGISTRATION", tournament.getWorkflowPhase());
         assertEquals("ENDED", tournament.getStatus());
@@ -156,7 +157,7 @@ class TournamentServiceTest {
         when(repository.findTopByOrderByCreatedAtDesc()).thenReturn(Optional.of(tournament));
         when(repository.save(any(Tournament.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        tournamentService.pauseTournament();
+        tournamentService.pauseTournament(0);
 
         assertEquals("PAUSED", tournament.getStatus());
         assertFalse(tournament.isRunning());
@@ -177,7 +178,7 @@ class TournamentServiceTest {
         when(repository.findTopByOrderByCreatedAtDesc()).thenReturn(Optional.of(tournament));
         when(repository.save(any(Tournament.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        tournamentService.balanceTables();
+        tournamentService.balanceTables(0);
 
         verify(repository).save(tournament);
 
@@ -206,7 +207,7 @@ class TournamentServiceTest {
         when(repository.findTopByOrderByCreatedAtDesc()).thenReturn(Optional.of(tournament));
         when(repository.save(any(Tournament.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        tournamentService.createFinalTable();
+        tournamentService.createFinalTable(0);
 
         assertEquals(1, tournament.getTableCount());
 
@@ -230,8 +231,20 @@ class TournamentServiceTest {
 
         when(repository.findTopByOrderByCreatedAtDesc()).thenReturn(Optional.of(tournament));
 
-        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> tournamentService.createFinalTable());
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> tournamentService.createFinalTable(0));
         assertEquals("Aktion nur im pausierten Turnier möglich.", ex.getMessage());
+    }
+
+    @Test
+    void startTournamentRejectsStaleVersion() {
+        when(repository.findTopByOrderByCreatedAtDesc()).thenReturn(Optional.of(tournament));
+
+        OptimisticLockingFailureException ex = assertThrows(
+                OptimisticLockingFailureException.class,
+                () -> tournamentService.startTournament(1)
+        );
+
+        assertEquals("Turnier wurde auf einem anderen Gerät geändert.", ex.getMessage());
     }
 
     @Test

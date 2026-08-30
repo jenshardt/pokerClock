@@ -598,8 +598,22 @@ function App() {
   };
 
   const confirmStartTournament = async () => {
+    const tournamentVersion = Number(status?.version);
+    if (!Number.isSafeInteger(tournamentVersion)) {
+      setMessage('Turnierstatus ist noch nicht verfügbar. Bitte erneut versuchen.');
+      return;
+    }
+
     try {
-      const response = await apiFetch('/api/show-tournament', { method: 'POST' });
+      const response = await apiFetch('/api/show-tournament', {
+        method: 'POST',
+        headers: { 'If-Match': String(tournamentVersion) },
+      });
+      if (response.status === 409) {
+        await fetchStatus();
+        setMessage('Der Turnierstatus wurde auf einem anderen Gerät geändert. Ansicht aktualisiert.');
+        return;
+      }
       if (!response.ok) {
         setMessage('Wechsel zur Turniersteuerung fehlgeschlagen.');
         return;
@@ -647,18 +661,30 @@ function App() {
       return false;
     }
 
+    const tournamentVersion = Number(status?.version);
+    if (!Number.isSafeInteger(tournamentVersion)) {
+      setMessage('Turnierstatus ist noch nicht verfügbar. Bitte erneut versuchen.');
+      return false;
+    }
+
     setTournamentActionBusy(true);
     try {
       const options = payload
         ? {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'If-Match': String(tournamentVersion) },
           body: JSON.stringify(payload),
         }
-        : { method: 'POST' };
+        : { method: 'POST', headers: { 'If-Match': String(tournamentVersion) } };
 
       const response = await apiFetch(endpoint, options);
+      if (response.status === 409) {
+        await fetchStatus();
+        setMessage('Der Turnierstatus wurde auf einem anderen Gerät geändert. Ansicht aktualisiert.');
+        return false;
+      }
       if (!response.ok) {
+        setMessage('Turnieraktion fehlgeschlagen. Bitte erneut versuchen.');
         return false;
       }
       await fetchStatus();

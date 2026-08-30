@@ -6,7 +6,9 @@ import com.pokerclock.api.TournamentSetupRequest;
 import com.pokerclock.api.TournamentStatusResponse;
 import com.pokerclock.model.Tournament;
 import com.pokerclock.repository.TournamentRepository;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -75,9 +77,11 @@ public class TournamentService {
         currentTournamentId = saved.getId();
     }
 
-    public void startTournament() {
+    @Transactional
+    public void startTournament(long expectedVersion) {
         Tournament tournament = getCurrentTournament().orElseThrow(() ->
                 new IllegalStateException("Turnier muss zuerst konfiguriert werden."));
+        ensureExpectedVersion(tournament, expectedVersion);
 
         if (STATUS_ENDED.equals(normalizeStatus(tournament.getStatus()))) {
             throw new IllegalStateException("Turnier ist bereits beendet.");
@@ -93,9 +97,11 @@ public class TournamentService {
         repository.save(tournament);
     }
 
-    public void showTournament() {
+    @Transactional
+    public void showTournament(long expectedVersion) {
         Tournament tournament = getCurrentTournament().orElseThrow(() ->
                 new IllegalStateException("Turnier muss zuerst konfiguriert werden."));
+        ensureExpectedVersion(tournament, expectedVersion);
 
         if (STATUS_ENDED.equals(normalizeStatus(tournament.getStatus()))) {
             throw new IllegalStateException("Turnier ist bereits beendet.");
@@ -105,9 +111,11 @@ public class TournamentService {
         repository.save(tournament);
     }
 
-    public void returnToRegistration() {
+    @Transactional
+    public void returnToRegistration(long expectedVersion) {
         Tournament tournament = getCurrentTournament().orElseThrow(() ->
                 new IllegalStateException("Turnier muss zuerst konfiguriert werden."));
+        ensureExpectedVersion(tournament, expectedVersion);
 
         if (STATUS_RUNNING.equals(normalizeStatus(tournament.getStatus()))) {
             accumulateElapsedIfRunning(tournament);
@@ -120,9 +128,11 @@ public class TournamentService {
         repository.save(tournament);
     }
 
-    public void pauseTournament() {
+    @Transactional
+    public void pauseTournament(long expectedVersion) {
         Tournament tournament = getCurrentTournament().orElseThrow(() ->
                 new IllegalStateException("Turnier muss zuerst konfiguriert werden."));
+        ensureExpectedVersion(tournament, expectedVersion);
 
         if (!STATUS_RUNNING.equals(normalizeStatus(tournament.getStatus()))) {
             return;
@@ -135,9 +145,11 @@ public class TournamentService {
         repository.save(tournament);
     }
 
-    public void resumeTournament() {
+    @Transactional
+    public void resumeTournament(long expectedVersion) {
         Tournament tournament = getCurrentTournament().orElseThrow(() ->
                 new IllegalStateException("Turnier muss zuerst konfiguriert werden."));
+        ensureExpectedVersion(tournament, expectedVersion);
 
         String status = normalizeStatus(tournament.getStatus());
         if (STATUS_ENDED.equals(status)) {
@@ -154,9 +166,11 @@ public class TournamentService {
         repository.save(tournament);
     }
 
-    public void endTournament() {
+    @Transactional
+    public void endTournament(long expectedVersion) {
         Tournament tournament = getCurrentTournament().orElseThrow(() ->
                 new IllegalStateException("Turnier muss zuerst konfiguriert werden."));
+        ensureExpectedVersion(tournament, expectedVersion);
 
         if (STATUS_RUNNING.equals(normalizeStatus(tournament.getStatus()))) {
             accumulateElapsedIfRunning(tournament);
@@ -168,9 +182,11 @@ public class TournamentService {
         repository.save(tournament);
     }
 
-    public void seatOpen(String playerName) {
+    @Transactional
+    public void seatOpen(String playerName, long expectedVersion) {
         Tournament tournament = getCurrentTournament().orElseThrow(() ->
                 new IllegalStateException("Turnier muss zuerst konfiguriert werden."));
+        ensureExpectedVersion(tournament, expectedVersion);
 
         String target = normalizeName(playerName);
         if (target == null || !tournament.getParticipants().contains(target)) {
@@ -187,9 +203,11 @@ public class TournamentService {
         repository.save(tournament);
     }
 
-    public void registerRebuy(String playerName) {
+    @Transactional
+    public void registerRebuy(String playerName, long expectedVersion) {
         Tournament tournament = getCurrentTournament().orElseThrow(() ->
                 new IllegalStateException("Turnier muss zuerst konfiguriert werden."));
+        ensureExpectedVersion(tournament, expectedVersion);
 
         String target = normalizeName(playerName);
         if (target == null || !tournament.getParticipants().contains(target)) {
@@ -207,9 +225,11 @@ public class TournamentService {
         repository.save(tournament);
     }
 
-    public void balanceTables() {
+    @Transactional
+    public void balanceTables(long expectedVersion) {
         Tournament tournament = getCurrentTournament().orElseThrow(() ->
                 new IllegalStateException("Turnier muss zuerst konfiguriert werden."));
+        ensureExpectedVersion(tournament, expectedVersion);
 
         ensurePaused(tournament);
 
@@ -275,9 +295,11 @@ public class TournamentService {
         repository.save(tournament);
     }
 
-    public void createFinalTable() {
+    @Transactional
+    public void createFinalTable(long expectedVersion) {
         Tournament tournament = getCurrentTournament().orElseThrow(() ->
                 new IllegalStateException("Turnier muss zuerst konfiguriert werden."));
+        ensureExpectedVersion(tournament, expectedVersion);
 
         ensurePaused(tournament);
 
@@ -355,6 +377,7 @@ public class TournamentService {
                 .nextItem(state.nextLabel)
                 .status(statusText)
                 .workflowPhase(resolveWorkflowPhase(tournament, status))
+                .version(tournament.getVersion())
                 .remainingSeconds(state.remainingSeconds)
                 .elapsedSeconds(elapsedSeconds)
                 .timeToNextBreakSeconds(timeToNextBreakSeconds)
@@ -378,6 +401,12 @@ public class TournamentService {
     private void ensurePaused(Tournament tournament) {
         if (!STATUS_PAUSED.equals(normalizeStatus(tournament.getStatus()))) {
             throw new IllegalStateException("Aktion nur im pausierten Turnier möglich.");
+        }
+    }
+
+    private void ensureExpectedVersion(Tournament tournament, long expectedVersion) {
+        if (tournament.getVersion() != expectedVersion) {
+            throw new OptimisticLockingFailureException("Turnier wurde auf einem anderen Gerät geändert.");
         }
     }
 

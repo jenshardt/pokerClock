@@ -13,6 +13,7 @@ public class TournamentStatusResponse {
     private String nextItem;
     private String status;
     private String workflowPhase;
+    private long version;
     private long remainingSeconds;
     private long elapsedSeconds;
     private long timeToNextBreakSeconds;
@@ -97,6 +98,14 @@ public class TournamentStatusResponse {
 
     public void setWorkflowPhase(String workflowPhase) {
         this.workflowPhase = workflowPhase;
+    }
+
+    public long getVersion() {
+        return version;
+    }
+
+    public void setVersion(long version) {
+        this.version = version;
     }
 
     public long getRemainingSeconds() {
@@ -276,6 +285,11 @@ public class TournamentStatusResponse {
 
         public Builder workflowPhase(String workflowPhase) {
             response.workflowPhase = workflowPhase;
+            return this;
+        }
+
+        public Builder version(long version) {
+            response.version = version;
             return this;
         }
 

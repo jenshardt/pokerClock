@@ -7,6 +7,7 @@ import com.pokerclock.api.TournamentSetupRequest;
 import com.pokerclock.api.TournamentStatusResponse;
 import com.pokerclock.service.TournamentResultArchiveService;
 import com.pokerclock.service.TournamentService;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -35,38 +36,38 @@ public class TournamentController {
     }
 
     @PostMapping("/start")
-    public ResponseEntity<Void> startTournament() {
-        tournamentService.startTournament();
+    public ResponseEntity<Void> startTournament(@RequestHeader("If-Match") long expectedVersion) {
+        tournamentService.startTournament(expectedVersion);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/show-tournament")
-    public ResponseEntity<Void> showTournament() {
-        tournamentService.showTournament();
+    public ResponseEntity<Void> showTournament(@RequestHeader("If-Match") long expectedVersion) {
+        tournamentService.showTournament(expectedVersion);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/return-to-registration")
-    public ResponseEntity<Void> returnToRegistration() {
-        tournamentService.returnToRegistration();
+    public ResponseEntity<Void> returnToRegistration(@RequestHeader("If-Match") long expectedVersion) {
+        tournamentService.returnToRegistration(expectedVersion);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/pause")
-    public ResponseEntity<Void> pauseTournament() {
-        tournamentService.pauseTournament();
+    public ResponseEntity<Void> pauseTournament(@RequestHeader("If-Match") long expectedVersion) {
+        tournamentService.pauseTournament(expectedVersion);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/resume")
-    public ResponseEntity<Void> resumeTournament() {
-        tournamentService.resumeTournament();
+    public ResponseEntity<Void> resumeTournament(@RequestHeader("If-Match") long expectedVersion) {
+        tournamentService.resumeTournament(expectedVersion);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/end")
-    public ResponseEntity<Void> endTournament() {
-        tournamentService.endTournament();
+    public ResponseEntity<Void> endTournament(@RequestHeader("If-Match") long expectedVersion) {
+        tournamentService.endTournament(expectedVersion);
         return ResponseEntity.ok().build();
     }
 
@@ -76,31 +77,38 @@ public class TournamentController {
     }
 
     @PostMapping("/seat-open")
-    public ResponseEntity<Void> seatOpen(@RequestBody(required = false) PlayerActionRequest request) {
-        tournamentService.seatOpen(request != null ? request.getPlayerName() : null);
+    public ResponseEntity<Void> seatOpen(@RequestBody(required = false) PlayerActionRequest request,
+                                         @RequestHeader("If-Match") long expectedVersion) {
+        tournamentService.seatOpen(request != null ? request.getPlayerName() : null, expectedVersion);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/rebuy")
-    public ResponseEntity<Void> rebuy(@RequestBody(required = false) PlayerActionRequest request) {
-        tournamentService.registerRebuy(request != null ? request.getPlayerName() : null);
+    public ResponseEntity<Void> rebuy(@RequestBody(required = false) PlayerActionRequest request,
+                                      @RequestHeader("If-Match") long expectedVersion) {
+        tournamentService.registerRebuy(request != null ? request.getPlayerName() : null, expectedVersion);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/table/balance")
-    public ResponseEntity<Void> balanceTables() {
-        tournamentService.balanceTables();
+    public ResponseEntity<Void> balanceTables(@RequestHeader("If-Match") long expectedVersion) {
+        tournamentService.balanceTables(expectedVersion);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/table/final-table")
-    public ResponseEntity<Void> createFinalTable() {
-        tournamentService.createFinalTable();
+    public ResponseEntity<Void> createFinalTable(@RequestHeader("If-Match") long expectedVersion) {
+        tournamentService.createFinalTable(expectedVersion);
         return ResponseEntity.ok().build();
     }
 
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<String> handleIllegalState(IllegalStateException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ex.getMessage());
+    }
+
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ResponseEntity<String> handleOptimisticLock(OptimisticLockingFailureException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ex.getMessage());
     }
 }

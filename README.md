@@ -275,10 +275,9 @@ System-Nginx mit HTTPS auf dem Raspberry Pi
 
 ### Noch offene Umsetzungsschritte
 
-1. **Versionskonflikte absichern:** Das Turnier erhält eine Versionsnummer; jede schreibende Aktion prüft die erwartete Version. Bei einem veralteten Zustand antwortet das Backend mit `409 Conflict` und der Client lädt den Status erneut.
-2. **PWA installierbar machen:** Web-App-Manifest, Icons und Service Worker ergänzen. Android-Nutzende können die Anwendung danach über einen kompatiblen Browser installieren und wie eine eigene App starten.
-3. **Mobile Turniersteuerung liefern:** Für kleine Displays eine fokussierte Ansicht mit Uhr, Blindstufen, Spielerzahlen sowie Pause, Fortsetzen, Beenden, Seat Open und Rebuy implementieren. Registrierung und Tischvorbereitung bleiben im MVP auf dem Laptop.
-4. **Mehrgerätebetrieb erweitern und nachweisen:** Integrationstests für Versionskonflikte ergänzen sowie Browser- und Android-PWA-Szenarien gegen den Raspberry Pi durchführen.
+1. **PWA installierbar machen:** Web-App-Manifest, Icons und Service Worker ergänzen. Android-Nutzende können die Anwendung danach über einen kompatiblen Browser installieren und wie eine eigene App starten.
+2. **Mobile Turniersteuerung liefern:** Für kleine Displays eine fokussierte Ansicht mit Uhr, Blindstufen, Spielerzahlen sowie Pause, Fortsetzen, Beenden, Seat Open und Rebuy implementieren. Registrierung und Tischvorbereitung bleiben im MVP auf dem Laptop.
+3. **Mehrgerätebetrieb erweitern und nachweisen:** Browser- und Android-PWA-Szenarien gegen den Raspberry Pi durchführen.
 
 ### MVP-Regeln
 
@@ -298,11 +297,11 @@ System-Nginx mit HTTPS auf dem Raspberry Pi
 - Gemeinsame Ansicht bei Übergängen zwischen Vorbereitung, Turniersteuerung und Registrierung.
 - Nach einem Turnierende erscheint die Zusammenfassung auf allen verbundenen Clients.
 - Sitzansagen werden nicht mehr bei jedem Status-Poll neu gestartet.
-- Backend-Tests für Workflow-Phasen und Übergänge. Stand dieses Entwicklungsschritts: 37 Tests erfolgreich.
+- Optimistische Versionsprüfung mit JPA-`@Version`: Jede schreibende Turnieraktion sendet die aus dem Status gelesene Revision im `If-Match`-Header. Veraltete Aktionen werden mit `409 Conflict` abgewiesen; der Client lädt den gemeinsamen Status erneut.
+- Backend-Tests für Workflow-Phasen, Übergänge und Versionskonflikte. Stand dieses Entwicklungsschritts: 40 Tests erfolgreich.
 
 ### Noch nicht umgesetzt
 
-- Optimistische Versionsprüfung und `409 Conflict` bei gleichzeitig veralteten Bedienaktionen.
 - Installierbare PWA mit Web-App-Manifest, Icons und Service Worker.
 - Speziell verdichtete mobile Turniersteuerung.
 
