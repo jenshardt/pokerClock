@@ -55,6 +55,7 @@ function App() {
   const authTimeoutRef = useRef(null);
   const soundManagerRef = useRef(null);
   const lastBlindAnnouncementRef = useRef(null);
+  const countdownLevelRef = useRef(null);
   const userMenuRef = useRef(null);
   const isFloorman = currentUser?.role === 'FLOORMAN';
   const isTable = currentUser?.role === 'TABLE';
@@ -140,6 +141,7 @@ function App() {
     setUserMenuOpen(false);
     setSettingsOpen(false);
     lastBlindAnnouncementRef.current = null;
+    countdownLevelRef.current = null;
   };
 
   const getSoundManager = () => {
@@ -268,6 +270,22 @@ function App() {
     };
   }, [currentUser, step]);
 
+  useEffect(() => {
+    if (!liveStatus?.running) {
+      return;
+    }
+    const remaining = Number(liveStatus.remainingSeconds);
+    const levelKey = liveStatus.currentBlind;
+    if (!Number.isFinite(remaining) || !levelKey) {
+      return;
+    }
+    // Countdown beeps once when a running stage enters its final 5 seconds.
+    if (remaining <= 5 && remaining > 0 && countdownLevelRef.current !== levelKey) {
+      countdownLevelRef.current = levelKey;
+      getSoundManager().playCountdownBeeps();
+    }
+  }, [liveStatus?.running, liveStatus?.remainingSeconds, liveStatus?.currentBlind]);
+
   const fetchStatus = async () => {
     try {
       const response = await apiFetch('/api/status');
@@ -293,7 +311,7 @@ function App() {
       if (lastBlindAnnouncementRef.current !== json.currentBlind) {
         lastBlindAnnouncementRef.current = json.currentBlind;
         const sound = getSoundManager();
-        await sound.announceBlindLevelChange(json.currentBlind);
+        await sound.announceStageStart(json.currentBlind);
       }
     } catch (error) {
       if (error.message !== 'UNAUTHORIZED') {

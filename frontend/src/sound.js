@@ -227,7 +227,12 @@ export function createSoundManager() {
   };
 
   const playBlindStageTransition = async () => {
-    // 5 seconds total: 0.5s beep + 0.5s pause, repeated 5 times.
+    await playCountdownBeeps();
+    await playStageStartCue();
+  };
+
+  // Five one-per-second beeps used as a countdown into a stage change.
+  const playCountdownBeeps = async () => {
     for (let i = 0; i < 5; i += 1) {
       const cycleStart = Date.now();
       await playBeep();
@@ -236,8 +241,10 @@ export function createSoundManager() {
         await wait(1000 - elapsed);
       }
     }
+  };
 
-    // Stage start indicator: higher, longer beep.
+  // Higher, longer beep marking the start of a new stage.
+  const playStageStartCue = async () => {
     const playedHigh = await playSample(SAMPLE_PATHS.beepHigh, 2000, 0.95, 'Hoher Beep (Stufenstart)');
     if (!playedHigh) {
       await playTone(1480, 2000, 'square', 0.1, 'Hoher Beep (Stufenstart)');
@@ -327,6 +334,12 @@ export function createSoundManager() {
     await speakBlindLevel(blindText);
   };
 
+  // Stage start without the 5 pre-beeps (used when the countdown already ran).
+  const announceStageStart = async (blindText) => {
+    await playStageStartCue();
+    await speakBlindLevel(blindText);
+  };
+
   const announceSeatPlacement = async ({ tableNumber, seatNumber, playerName, roles }) => {
     const name = String(playerName || '').trim();
     if (!name) {
@@ -368,12 +381,15 @@ export function createSoundManager() {
     wait,
     playBeep,
     playBlindStageTransition,
+    playCountdownBeeps,
+    playStageStartCue,
     playBeepSeries,
     playFanfare,
     speak,
     speakPlayerName,
     announceSeatPlacement,
     announceBlindLevelChange,
+    announceStageStart,
     speakBlindLevel,
     runDemo,
   };
