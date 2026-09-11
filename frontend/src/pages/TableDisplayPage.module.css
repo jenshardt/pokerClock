@@ -60,6 +60,52 @@
   margin-top: 4px;
 }
 
+.headerActions {
+  display: flex;
+  align-items: end;
+  gap: 14px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.boardToggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  color: #c8d4df;
+  font-size: 14px;
+}
+
+.boardToggle input {
+  width: 16px;
+  height: 16px;
+}
+
+.userBox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.userName {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  text-align: right;
+}
+
+.userName strong {
+  font-size: 15px;
+}
+
+.userName span {
+  color: #d6ac57;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
 .preparationDisplay {
   grid-template-rows: auto minmax(0, 1fr);
 }

@@ -853,7 +853,7 @@ function App() {
   }
 
   if (isTable) {
-    return <TableDisplayPage status={liveStatus} distribution={distribution} />;
+    return <TableDisplayPage status={liveStatus} distribution={distribution} currentUser={currentUser} onLogout={handleLogout} />;
   }
 
   return (

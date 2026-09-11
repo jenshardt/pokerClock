@@ -5,6 +5,7 @@ import styles from './TableDisplayPage.module.css';
 
 const ALL_TABLES = 'ALL_TABLES';
 const TABLE_SELECTION_KEY = 'pokerclock.tableDisplay.selection';
+const SHOW_BOARD_KEY = 'pokerclock.tableDisplay.showBoard';
 
 function formatClock(totalSeconds) {
   const seconds = Math.max(0, Number(totalSeconds || 0));
@@ -32,8 +33,9 @@ function formatCurrency(value) {
   });
 }
 
-export default function TableDisplayPage({ status, distribution }) {
+export default function TableDisplayPage({ status, distribution, currentUser, onLogout }) {
   const [selectedTable, setSelectedTable] = useState(() => localStorage.getItem(TABLE_SELECTION_KEY) || ALL_TABLES);
+  const [showTableBoard, setShowTableBoard] = useState(() => localStorage.getItem(SHOW_BOARD_KEY) !== 'false');
   const tableNames = distribution.map((table) => table.tableName);
   const isPreparation = status?.workflowPhase === 'PREPARATION';
   const isRegistration = status?.workflowPhase === 'REGISTRATION';
@@ -57,6 +59,12 @@ export default function TableDisplayPage({ status, distribution }) {
     setSelectedTable(nextSelection);
   };
 
+  const handleBoardToggle = (event) => {
+    const next = event.target.checked;
+    localStorage.setItem(SHOW_BOARD_KEY, String(next));
+    setShowTableBoard(next);
+  };
+
   const tableSelector = (
     <label className={styles.tableSelect}>
       Tischansicht
@@ -68,8 +76,27 @@ export default function TableDisplayPage({ status, distribution }) {
     </label>
   );
 
+  const boardToggle = (
+    <label className={styles.boardToggle}>
+      <input type="checkbox" checked={showTableBoard} onChange={handleBoardToggle} />
+      Tischplan anzeigen
+    </label>
+  );
+
+  const userBox = onLogout ? (
+    <div className={styles.userBox}>
+      {currentUser && (
+        <span className={styles.userName}>
+          <strong>{currentUser.username}</strong>
+          <span>{currentUser.role}</span>
+        </span>
+      )}
+      <button type="button" className="ghost-button" onClick={onLogout}>Abmelden</button>
+    </div>
+  ) : null;
+
   if (isAborted) {
-    return <StatePage title="Turnier wurde abgebrochen" detail="Warte auf die nächste Turniervorbereitung." tableSelector={tableSelector} />;
+    return <StatePage title="Turnier wurde abgebrochen" detail="Warte auf die nächste Turniervorbereitung." tableSelector={tableSelector} actions={userBox} />;
   }
 
   if (isRegistration || !status || !status.tournamentName) {
@@ -77,6 +104,7 @@ export default function TableDisplayPage({ status, distribution }) {
       title={selectedTableLabel}
       detail="Turnier wird vorbereitet. Eine konkrete Tischverteilung erscheint nach der Anlage des Turniers."
       tableSelector={tableSelector}
+      actions={userBox}
     />;
   }
 
@@ -88,7 +116,10 @@ export default function TableDisplayPage({ status, distribution }) {
             <p className={styles.eyebrow}>PokerClock</p>
             <h1>{selectedTableLabel}</h1>
           </div>
-          {tableSelector}
+          <div className={styles.headerActions}>
+            {tableSelector}
+            {userBox}
+          </div>
         </header>
         <section className={styles.preparationBoard}>
           <p>Turnier wird vorbereitet</p>
@@ -112,7 +143,10 @@ export default function TableDisplayPage({ status, distribution }) {
             <p className={styles.eyebrow}>PokerClock</p>
             <h1>{status.tournamentName || 'Turnier'}</h1>
           </div>
-          {tableSelector}
+          <div className={styles.headerActions}>
+            {tableSelector}
+            {userBox}
+          </div>
         </header>
 
         <section className={styles.clockPanel}>
@@ -166,7 +200,11 @@ export default function TableDisplayPage({ status, distribution }) {
           <p className={styles.eyebrow}>PokerClock</p>
           <h1>{selectedTableLabel}</h1>
         </div>
-        {tableSelector}
+        <div className={styles.headerActions}>
+          {tableSelector}
+          {boardToggle}
+          {userBox}
+        </div>
       </header>
 
       <TournamentPage
@@ -174,7 +212,7 @@ export default function TableDisplayPage({ status, distribution }) {
         distribution={selectedDistribution}
         tournamentConfig={{}}
         showTableManagement={false}
-        showTableBoard
+        showTableBoard={showTableBoard}
         showControls={false}
         showCompletionSummary={false}
         canReturnToRegistration={false}
@@ -184,7 +222,7 @@ export default function TableDisplayPage({ status, distribution }) {
   );
 }
 
-function StatePage({ title, detail, tableSelector }) {
+function StatePage({ title, detail, tableSelector, actions }) {
   return (
     <main className={`${styles.tableDisplay} ${styles.statePage}`}>
       <section>
@@ -192,6 +230,7 @@ function StatePage({ title, detail, tableSelector }) {
         <h1>{title}</h1>
         <p>{detail}</p>
         {tableSelector}
+        {actions}
       </section>
     </main>
   );
