@@ -711,6 +711,8 @@ function App() {
 
   const pauseTournament = async () => runTournamentAction('/api/pause');
   const resumeTournament = async () => runTournamentAction('/api/resume');
+  const jumpToNextLevel = async () => runTournamentAction('/api/level/next');
+  const jumpToPreviousLevel = async () => runTournamentAction('/api/level/previous');
   const endTournament = async () => runTournamentAction('/api/end');
   const markSeatOpen = async (playerName) => runTournamentAction('/api/seat-open', { playerName });
   const addRebuy = async (playerName) => runTournamentAction('/api/rebuy', { playerName });
@@ -1043,6 +1045,8 @@ function App() {
           }}
           pauseTournament={pauseTournament}
           resumeTournament={resumeTournament}
+          jumpToNextLevel={jumpToNextLevel}
+          jumpToPreviousLevel={jumpToPreviousLevel}
           endTournament={endTournament}
           markSeatOpen={markSeatOpen}
           addRebuy={addRebuy}

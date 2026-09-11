@@ -180,6 +180,55 @@ public class TournamentService {
     }
 
     @Transactional
+    public void jumpToNextLevel(long expectedVersion) {
+        shiftBlindLevel(expectedVersion, 1);
+    }
+
+    @Transactional
+    public void jumpToPreviousLevel(long expectedVersion) {
+        shiftBlindLevel(expectedVersion, -1);
+    }
+
+    private void shiftBlindLevel(long expectedVersion, int direction) {
+        Tournament tournament = getCurrentTournament().orElseThrow(() ->
+                new IllegalStateException("Turnier muss zuerst konfiguriert werden."));
+        ensureExpectedVersion(tournament, expectedVersion);
+        ensurePaused(tournament);
+
+        List<ScheduleItem> schedule = parseSchedule(tournament.getBlindStructure());
+        List<Long> levelStarts = computeLevelStartOffsets(schedule);
+        if (levelStarts.isEmpty()) {
+            return;
+        }
+
+        long elapsed = Math.max(0, tournament.getAccumulatedElapsedSeconds());
+        int currentPos = -1;
+        for (int index = 0; index < levelStarts.size(); index += 1) {
+            if (levelStarts.get(index) <= elapsed) {
+                currentPos = index;
+            } else {
+                break;
+            }
+        }
+
+        int targetPos = Math.max(0, Math.min(levelStarts.size() - 1, currentPos + direction));
+        tournament.setAccumulatedElapsedSeconds(levelStarts.get(targetPos));
+        repository.save(tournament);
+    }
+
+    private List<Long> computeLevelStartOffsets(List<ScheduleItem> schedule) {
+        List<Long> starts = new ArrayList<>();
+        long consumed = 0;
+        for (ScheduleItem item : schedule) {
+            if (!item.breakItem) {
+                starts.add(consumed);
+            }
+            consumed += item.durationSeconds;
+        }
+        return starts;
+    }
+
+    @Transactional
     public void endTournament(long expectedVersion) {
         Tournament tournament = getCurrentTournament().orElseThrow(() ->
                 new IllegalStateException("Turnier muss zuerst konfiguriert werden."));

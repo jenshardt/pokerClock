@@ -74,6 +74,20 @@ public class TournamentController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/level/next")
+    @RequireRoles({UserRole.ADMIN, UserRole.FLOORMAN})
+    public ResponseEntity<Void> jumpToNextLevel(@RequestHeader("If-Match") long expectedVersion) {
+        tournamentService.jumpToNextLevel(expectedVersion);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/level/previous")
+    @RequireRoles({UserRole.ADMIN, UserRole.FLOORMAN})
+    public ResponseEntity<Void> jumpToPreviousLevel(@RequestHeader("If-Match") long expectedVersion) {
+        tournamentService.jumpToPreviousLevel(expectedVersion);
+        return ResponseEntity.ok().build();
+    }
+
     @PostMapping("/end")
     @RequireRoles({UserRole.ADMIN, UserRole.FLOORMAN})
     public ResponseEntity<Void> endTournament(@RequestHeader("If-Match") long expectedVersion) {

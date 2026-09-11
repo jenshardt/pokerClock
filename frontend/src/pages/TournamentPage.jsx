@@ -69,6 +69,8 @@ export default function TournamentPage({
   tournamentConfig,
   pauseTournament,
   resumeTournament,
+  jumpToNextLevel,
+  jumpToPreviousLevel,
   endTournament,
   markSeatOpen,
   addRebuy,
@@ -592,6 +594,8 @@ export default function TournamentPage({
           <>
             <button type="button" className="ghost-button" onClick={pauseTournament} disabled={actionBusy || !isRunning}>Turnier pausieren</button>
             <button type="button" className="ghost-button" onClick={resumeTournament} disabled={actionBusy || isEnded || isRunning}>Turnier fortsetzen</button>
+            {jumpToPreviousLevel && <button type="button" className="ghost-button" onClick={jumpToPreviousLevel} disabled={actionBusy || !isPaused || isEnded}>Blindstufe zurück</button>}
+            {jumpToNextLevel && <button type="button" className="ghost-button" onClick={jumpToNextLevel} disabled={actionBusy || !isPaused || isEnded}>Blindstufe vor</button>}
             {showTableManagement && <button type="button" className="ghost-button" onClick={balanceTables} disabled={actionBusy || !isPaused || isEnded}>Tische ausgleichen</button>}
             {showTableManagement && <button type="button" className="ghost-button" onClick={createFinalTable} disabled={actionBusy || !isPaused || isEnded || !finalTableEligible}>Final Table erstellen</button>}
             <button type="button" className="danger-button" onClick={handleEndClick} disabled={actionBusy || isEnded}>Turnier beenden</button>

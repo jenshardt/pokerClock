@@ -214,6 +214,47 @@ class TournamentServiceTest {
     }
 
     @Test
+    void jumpToNextLevelMovesToStartOfNextBlindLevel() {
+        tournament.setStatus("PAUSED");
+        tournament.setRunning(false);
+        tournament.setResumedAt(null);
+        tournament.setAccumulatedElapsedSeconds(300);
+
+        when(repository.findTopByOrderByCreatedAtDesc()).thenReturn(Optional.of(tournament));
+        when(repository.save(any(Tournament.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        tournamentService.jumpToNextLevel(0);
+
+        assertEquals(1800, tournament.getAccumulatedElapsedSeconds());
+    }
+
+    @Test
+    void jumpToPreviousLevelMovesToStartOfPreviousBlindLevel() {
+        tournament.setStatus("PAUSED");
+        tournament.setRunning(false);
+        tournament.setResumedAt(null);
+        tournament.setAccumulatedElapsedSeconds(2000);
+
+        when(repository.findTopByOrderByCreatedAtDesc()).thenReturn(Optional.of(tournament));
+        when(repository.save(any(Tournament.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        tournamentService.jumpToPreviousLevel(0);
+
+        assertEquals(0, tournament.getAccumulatedElapsedSeconds());
+    }
+
+    @Test
+    void jumpToNextLevelRequiresPausedTournament() {
+        tournament.setStatus("RUNNING");
+        tournament.setRunning(true);
+        tournament.setResumedAt(Instant.now());
+
+        when(repository.findTopByOrderByCreatedAtDesc()).thenReturn(Optional.of(tournament));
+
+        assertThrows(IllegalStateException.class, () -> tournamentService.jumpToNextLevel(0));
+    }
+
+    @Test
     void seatOpenIsAllowedWhenRebuysAreDisabled() {
         tournament.setRebuyAllowed(false);
         when(repository.findTopByOrderByCreatedAtDesc()).thenReturn(Optional.of(tournament));
