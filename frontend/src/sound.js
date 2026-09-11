@@ -340,6 +340,13 @@ export function createSoundManager() {
     await speakBlindLevel(blindText);
   };
 
+  const announceBreak = async (minutes) => {
+    await playStageStartCue();
+    const safeMinutes = Math.max(1, Math.round(Number(minutes) || 0));
+    const unit = safeMinutes === 1 ? 'minute' : 'minutes';
+    await speak(`We are now in a break for ${safeMinutes} ${unit}`, { lang: 'en-US' });
+  };
+
   const announceSeatPlacement = async ({ tableNumber, seatNumber, playerName, roles }) => {
     const name = String(playerName || '').trim();
     if (!name) {
@@ -390,6 +397,7 @@ export function createSoundManager() {
     announceSeatPlacement,
     announceBlindLevelChange,
     announceStageStart,
+    announceBreak,
     speakBlindLevel,
     runDemo,
   };

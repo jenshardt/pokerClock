@@ -299,19 +299,30 @@ function App() {
       }
       setStep(toStep(json?.workflowPhase));
 
-      if (!json?.running || !json?.currentBlind || !String(json.currentBlind).includes('/')) {
+      if (!json?.running || !json?.currentBlind) {
+        return;
+      }
+
+      const currentBlind = json.currentBlind;
+      const isBreak = currentBlind === 'Break';
+      if (!isBreak && !String(currentBlind).includes('/')) {
         return;
       }
 
       if (lastBlindAnnouncementRef.current === null) {
-        lastBlindAnnouncementRef.current = json.currentBlind;
+        lastBlindAnnouncementRef.current = currentBlind;
         return;
       }
 
-      if (lastBlindAnnouncementRef.current !== json.currentBlind) {
-        lastBlindAnnouncementRef.current = json.currentBlind;
+      if (lastBlindAnnouncementRef.current !== currentBlind) {
+        lastBlindAnnouncementRef.current = currentBlind;
         const sound = getSoundManager();
-        await sound.announceStageStart(json.currentBlind);
+        if (isBreak) {
+          const minutes = Math.max(1, Math.round(Number(json.remainingSeconds || 0) / 60));
+          await sound.announceBreak(minutes);
+        } else {
+          await sound.announceStageStart(currentBlind);
+        }
       }
     } catch (error) {
       if (error.message !== 'UNAUTHORIZED') {
