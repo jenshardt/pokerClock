@@ -711,6 +711,27 @@ function App() {
 
   const pauseTournament = async () => runTournamentAction('/api/pause');
   const resumeTournament = async () => runTournamentAction('/api/resume');
+  const resumeTournamentWithLevelCue = async () => {
+    const currentBlind = status?.currentBlind;
+    const isNewLevel = typeof currentBlind === 'string'
+      && currentBlind.includes('/')
+      && lastBlindAnnouncementRef.current !== null
+      && lastBlindAnnouncementRef.current !== currentBlind;
+
+    if (!isNewLevel) {
+      return resumeTournament();
+    }
+
+    const sound = getSoundManager();
+    await sound.playBlindStageTransition();
+    // Pre-set so the status poll does not re-announce this level change.
+    lastBlindAnnouncementRef.current = currentBlind;
+    const [resumed] = await Promise.all([
+      resumeTournament(),
+      sound.speakBlindLevel(currentBlind),
+    ]);
+    return resumed;
+  };
   const jumpToNextLevel = async () => runTournamentAction('/api/level/next');
   const jumpToPreviousLevel = async () => runTournamentAction('/api/level/previous');
   const endTournament = async () => runTournamentAction('/api/end');
@@ -1044,7 +1065,7 @@ function App() {
             participants,
           }}
           pauseTournament={pauseTournament}
-          resumeTournament={resumeTournament}
+          resumeTournament={resumeTournamentWithLevelCue}
           jumpToNextLevel={jumpToNextLevel}
           jumpToPreviousLevel={jumpToPreviousLevel}
           endTournament={endTournament}
