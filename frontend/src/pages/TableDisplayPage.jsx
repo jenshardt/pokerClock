@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import TableDistributionBoard from '../components/TableDistributionBoard';
+import TournamentPage from './TournamentPage';
 import styles from './TableDisplayPage.module.css';
 
 const ALL_TABLES = 'ALL_TABLES';
@@ -39,10 +40,6 @@ export default function TableDisplayPage({ status, distribution }) {
   const isAborted = status?.completionReason === 'ABORTED';
   const isEnded = status?.completionReason === 'COMPLETED';
   const payoutSummary = status?.payoutSummary || [];
-  const seatStatuses = Object.fromEntries([
-    ...(status?.activePlayerNames || []).map((playerName) => [playerName, 'active']),
-    ...(status?.eliminatedPlayerNames || []).map((playerName) => [playerName, 'eliminated']),
-  ]);
   const selectedDistribution = selectedTable === ALL_TABLES
     ? distribution
     : distribution.filter((table) => table.tableName === selectedTable);
@@ -107,37 +104,36 @@ export default function TableDisplayPage({ status, distribution }) {
     );
   }
 
-  return (
-    <main className={styles.tableDisplay}>
-      <header className={styles.header}>
-        <div>
-          <p className={styles.eyebrow}>PokerClock</p>
-          <h1>{status.tournamentName || 'Turnier'}</h1>
-        </div>
-        {tableSelector}
-      </header>
+  if (isEnded) {
+    return (
+      <main className={styles.tableDisplay}>
+        <header className={styles.header}>
+          <div>
+            <p className={styles.eyebrow}>PokerClock</p>
+            <h1>{status.tournamentName || 'Turnier'}</h1>
+          </div>
+          {tableSelector}
+        </header>
 
-      <section className={styles.clockPanel}>
-        <p className={styles.status}>{isEnded ? 'Turnier beendet' : status.status}</p>
-        <strong className={styles.clock}>{isEnded ? formatClock(status.elapsedSeconds) : formatClock(status.remainingSeconds)}</strong>
-        <p className={styles.blinds}>
-          {status.currentSmallBlind && status.currentBigBlind
-            ? `SB ${status.currentSmallBlind.toLocaleString('de-DE')} / BB ${status.currentBigBlind.toLocaleString('de-DE')}`
-            : (status.currentBlind || '—')}
-        </p>
-        {!isEnded && <p className={styles.next}>Nächste Stufe: {status.nextItem || '—'}</p>}
-      </section>
+        <section className={styles.clockPanel}>
+          <p className={styles.status}>Turnier beendet</p>
+          <strong className={styles.clock}>{formatClock(status.elapsedSeconds)}</strong>
+          <p className={styles.blinds}>
+            {status.currentSmallBlind && status.currentBigBlind
+              ? `SB ${status.currentSmallBlind.toLocaleString('de-DE')} / BB ${status.currentBigBlind.toLocaleString('de-DE')}`
+              : (status.currentBlind || '—')}
+          </p>
+        </section>
 
-      <section className={styles.metrics}>
-        <div><span>Zeit bis Pause</span><strong>{Number(status.timeToNextBreakSeconds) >= 0 ? formatDuration(status.timeToNextBreakSeconds) : '—'}</strong></div>
-        <div><span>Turnierdauer</span><strong>{formatDuration(status.elapsedSeconds)}</strong></div>
-        <div><span>Spieler</span><strong>{formatNumber(status.playersLeft)} / {formatNumber(status.entries)}</strong></div>
-        <div><span>Rebuys</span><strong>{formatNumber(status.rebuys)}</strong></div>
-        <div><span>Total Chips</span><strong>{formatNumber(status.totalChips)}</strong></div>
-        <div><span>Average Stack</span><strong>{status.playersLeft > 0 ? formatNumber(status.averageStack) : '—'}</strong></div>
-      </section>
+        <section className={styles.metrics}>
+          <div><span>Zeit bis Pause</span><strong>{Number(status.timeToNextBreakSeconds) >= 0 ? formatDuration(status.timeToNextBreakSeconds) : '—'}</strong></div>
+          <div><span>Turnierdauer</span><strong>{formatDuration(status.elapsedSeconds)}</strong></div>
+          <div><span>Spieler</span><strong>{formatNumber(status.playersLeft)} / {formatNumber(status.entries)}</strong></div>
+          <div><span>Rebuys</span><strong>{formatNumber(status.rebuys)}</strong></div>
+          <div><span>Total Chips</span><strong>{formatNumber(status.totalChips)}</strong></div>
+          <div><span>Average Stack</span><strong>{status.playersLeft > 0 ? formatNumber(status.averageStack) : '—'}</strong></div>
+        </section>
 
-      {isEnded ? (
         <section className={styles.completionPanel}>
           <h2>Turnier-Zusammenfassung</h2>
           <dl>
@@ -159,27 +155,31 @@ export default function TableDisplayPage({ status, distribution }) {
             <p>{status.payoutSummaryEnabled ? 'Die Auszahlungsübersicht wurde noch nicht erfasst.' : 'Für dieses Turnier ist keine Auszahlungsübersicht vorgesehen.'}</p>
           )}
         </section>
-      ) : selectedTable === ALL_TABLES ? (
-        <section className={styles.tableOverview} aria-label="Tischübersicht">
-          {distribution.map((table) => (
-            <article key={table.tableName} className={styles.tableSummary}>
-              <h2>{table.tableName}</h2>
-              <p>{table.players.length} Spieler</p>
-              <div className={styles.playerList}>
-                {table.players.length > 0
-                  ? table.players.map((playerName) => (
-                    <span key={playerName} className={seatStatuses[playerName] === 'eliminated' ? styles.eliminatedPlayer : ''}>{playerName}</span>
-                  ))
-                  : 'Noch keine Plätze belegt'}
-              </div>
-            </article>
-          ))}
-        </section>
-      ) : (
-        <section className={styles.singleTable}>
-          <TableDistributionBoard distribution={selectedDistribution} seatStatuses={seatStatuses} showRoleMarkers={false} compact compressed interactive={false} />
-        </section>
-      )}
+      </main>
+    );
+  }
+
+  return (
+    <main className={styles.embeddedDisplay}>
+      <header className={styles.header}>
+        <div>
+          <p className={styles.eyebrow}>PokerClock</p>
+          <h1>{selectedTableLabel}</h1>
+        </div>
+        {tableSelector}
+      </header>
+
+      <TournamentPage
+        status={status}
+        distribution={selectedDistribution}
+        tournamentConfig={{}}
+        showTableManagement={false}
+        showTableBoard
+        showControls={false}
+        showCompletionSummary={false}
+        canReturnToRegistration={false}
+        actionBusy={false}
+      />
     </main>
   );
 }

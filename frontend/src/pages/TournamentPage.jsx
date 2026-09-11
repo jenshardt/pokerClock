@@ -75,6 +75,8 @@ export default function TournamentPage({
   balanceTables,
   createFinalTable,
   showTableManagement = true,
+  showTableBoard = false,
+  showControls = true,
   saveTournamentResult,
   actionBusy,
   shuffleUpAndDeal,
@@ -520,11 +522,11 @@ export default function TournamentPage({
             </div>
           </div>
 
-          {showTableManagement && (
+          {(showTableManagement || showTableBoard) && (
             <section className={styles.tableBoardSection}>
               <div className={styles.tableBoardHead}>
                 <h3 className={styles.panelHeading}>Tischplan</h3>
-                <p>Klicke auf einen Platz, um Spieler als ausgeschieden zu markieren oder einen Rebuy auszuführen.</p>
+                {showTableManagement && <p>Klicke auf einen Platz, um Spieler als ausgeschieden zu markieren oder einen Rebuy auszuführen.</p>}
               </div>
 
               <TableDistributionBoard
@@ -532,13 +534,14 @@ export default function TournamentPage({
                 activeTablePopup={activeTablePopup}
                 setActiveTablePopup={setActiveTablePopup}
                 seatStatuses={seatStatuses}
-                onSeatSelect={handleSeatSelect}
+                onSeatSelect={showTableManagement ? handleSeatSelect : undefined}
                 selectedPlayerName={selectedSeatAction?.playerName}
                 showRoleMarkers={false}
                 compact
+                interactive={showTableManagement}
               />
 
-              {selectedSeatAction && (
+              {showTableManagement && selectedSeatAction && (
                 <div className={styles.seatActionPanel}>
                   <div className={styles.seatActionMeta}>
                     <strong>{selectedSeatAction.playerName}</strong>
@@ -576,6 +579,7 @@ export default function TournamentPage({
         <p>Kein Status verfügbar.</p>
       )}
 
+      {showControls && (
       <div className={styles.controlBar}>
         {isReady ? (
           <>
@@ -597,6 +601,7 @@ export default function TournamentPage({
           </>
         )}
       </div>
+      )}
 
       {endConfirmOpen && (
         <div className="settings-overlay" onClick={() => setEndConfirmOpen(false)}>
