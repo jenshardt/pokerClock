@@ -52,20 +52,12 @@
 }
 
 .tableSelect {
-  width: min(240px, 100%);
-  margin: 0;
+  width: 100%;
+  margin: 0 0 12px;
 }
 
 .tableSelect select {
   margin-top: 4px;
-}
-
-.headerActions {
-  display: flex;
-  align-items: end;
-  gap: 14px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
 }
 
 .preparationDisplay {
@@ -267,12 +259,6 @@
 .statePage section > p:last-child {
   margin: 12px 0 0;
   color: #c8d4df;
-}
-
-.statePage .tableSelect {
-  width: min(260px, 100%);
-  margin: 18px auto 0;
-  text-align: left;
 }
 
 @media (max-width: 700px) {

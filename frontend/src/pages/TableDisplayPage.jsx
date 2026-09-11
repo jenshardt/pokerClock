@@ -122,6 +122,7 @@ export default function TableDisplayPage({ status, distribution, currentUser, on
 
         <div className="settings-group">
           <h3 className="settings-group-title">Anzeige</h3>
+          {tableSelector}
           <label className="settings-toggle">
             <input type="checkbox" checked={showTableBoard} onChange={handleBoardToggle} />
             Tischplan anzeigen
@@ -136,14 +137,13 @@ export default function TableDisplayPage({ status, distribution, currentUser, on
   ) : null;
 
   if (isAborted) {
-    return <StatePage title="Turnier wurde abgebrochen" detail="Warte auf die nächste Turniervorbereitung." tableSelector={tableSelector} actions={headerMenu} overlay={settingsOverlay} />;
+    return <StatePage title="Turnier wurde abgebrochen" detail="Warte auf die nächste Turniervorbereitung." actions={headerMenu} overlay={settingsOverlay} />;
   }
 
   if (isRegistration || !status || !status.tournamentName) {
     return <StatePage
       title={selectedTableLabel}
       detail="Turnier wird vorbereitet. Eine konkrete Tischverteilung erscheint nach der Anlage des Turniers."
-      tableSelector={tableSelector}
       actions={headerMenu}
       overlay={settingsOverlay}
     />;
@@ -157,10 +157,7 @@ export default function TableDisplayPage({ status, distribution, currentUser, on
             <p className={styles.eyebrow}>PokerClock</p>
             <h1>{selectedTableLabel}</h1>
           </div>
-          <div className={styles.headerActions}>
-            {tableSelector}
-            {headerMenu}
-          </div>
+          {headerMenu}
         </header>
         <section className={styles.preparationBoard}>
           <p>Turnier wird vorbereitet</p>
@@ -185,10 +182,7 @@ export default function TableDisplayPage({ status, distribution, currentUser, on
             <p className={styles.eyebrow}>PokerClock</p>
             <h1>{status.tournamentName || 'Turnier'}</h1>
           </div>
-          <div className={styles.headerActions}>
-            {tableSelector}
-            {headerMenu}
-          </div>
+          {headerMenu}
         </header>
 
         <section className={styles.clockPanel}>
@@ -243,10 +237,7 @@ export default function TableDisplayPage({ status, distribution, currentUser, on
           <p className={styles.eyebrow}>PokerClock</p>
           <h1>{selectedTableLabel}</h1>
         </div>
-        <div className={styles.headerActions}>
-          {tableSelector}
-          {headerMenu}
-        </div>
+        {headerMenu}
       </header>
 
       <TournamentPage
@@ -265,14 +256,13 @@ export default function TableDisplayPage({ status, distribution, currentUser, on
   );
 }
 
-function StatePage({ title, detail, tableSelector, actions, overlay }) {
+function StatePage({ title, detail, actions, overlay }) {
   return (
     <main className={`${styles.tableDisplay} ${styles.statePage}`}>
       <section>
         <p className={styles.eyebrow}>PokerClock</p>
         <h1>{title}</h1>
         <p>{detail}</p>
-        {tableSelector}
         {actions}
       </section>
       {overlay}
