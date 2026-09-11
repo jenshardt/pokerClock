@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import TableDistributionBoard from '../components/TableDistributionBoard';
 import TournamentPage from './TournamentPage';
 import styles from './TableDisplayPage.module.css';
@@ -36,6 +36,9 @@ function formatCurrency(value) {
 export default function TableDisplayPage({ status, distribution, currentUser, onLogout }) {
   const [selectedTable, setSelectedTable] = useState(() => localStorage.getItem(TABLE_SELECTION_KEY) || ALL_TABLES);
   const [showTableBoard, setShowTableBoard] = useState(() => localStorage.getItem(SHOW_BOARD_KEY) !== 'false');
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef(null);
   const tableNames = distribution.map((table) => table.tableName);
   const isPreparation = status?.workflowPhase === 'PREPARATION';
   const isRegistration = status?.workflowPhase === 'REGISTRATION';
@@ -52,6 +55,19 @@ export default function TableDisplayPage({ status, distribution, currentUser, on
       setSelectedTable(ALL_TABLES);
     }
   }, [selectedTable, tableNames]);
+
+  useEffect(() => {
+    if (!userMenuOpen) {
+      return undefined;
+    }
+    const handleClickOutside = (event) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [userMenuOpen]);
 
   const handleTableSelectionChange = (event) => {
     const nextSelection = event.target.value;
@@ -76,27 +92,51 @@ export default function TableDisplayPage({ status, distribution, currentUser, on
     </label>
   );
 
-  const boardToggle = (
-    <label className={styles.boardToggle}>
-      <input type="checkbox" checked={showTableBoard} onChange={handleBoardToggle} />
-      Tischplan anzeigen
-    </label>
+  const headerMenu = (
+    <div className="hero-user-menu" ref={userMenuRef}>
+      <button
+        type="button"
+        className="user-pill user-pill-button"
+        onClick={() => setUserMenuOpen((prev) => !prev)}
+      >
+        <strong>{currentUser?.username || 'Tisch'}</strong>
+        <span>{currentUser?.role || 'TABLE'}</span>
+      </button>
+
+      {userMenuOpen && (
+        <div className="user-menu-dropdown">
+          <button type="button" className="ghost-button" onClick={() => { setUserMenuOpen(false); setSettingsOpen(true); }}>Settings</button>
+          {onLogout && <button type="button" className="ghost-button" onClick={onLogout}>Abmelden</button>}
+        </div>
+      )}
+    </div>
   );
 
-  const userBox = onLogout ? (
-    <div className={styles.userBox}>
-      {currentUser && (
-        <span className={styles.userName}>
-          <strong>{currentUser.username}</strong>
-          <span>{currentUser.role}</span>
-        </span>
-      )}
-      <button type="button" className="ghost-button" onClick={onLogout}>Abmelden</button>
+  const settingsOverlay = settingsOpen ? (
+    <div className="settings-overlay" onClick={() => setSettingsOpen(false)}>
+      <section className="card settings-card" onClick={(event) => event.stopPropagation()}>
+        <div className="settings-head">
+          <h2>Settings</h2>
+          <p>Anzeigeeinstellungen für diesen Tisch{currentUser ? ` (${currentUser.username})` : ''}.</p>
+        </div>
+
+        <div className="settings-group">
+          <h3 className="settings-group-title">Anzeige</h3>
+          <label className="settings-toggle">
+            <input type="checkbox" checked={showTableBoard} onChange={handleBoardToggle} />
+            Tischplan anzeigen
+          </label>
+        </div>
+
+        <div className="settings-actions">
+          <button type="button" className="primary-button" onClick={() => setSettingsOpen(false)}>Schließen</button>
+        </div>
+      </section>
     </div>
   ) : null;
 
   if (isAborted) {
-    return <StatePage title="Turnier wurde abgebrochen" detail="Warte auf die nächste Turniervorbereitung." tableSelector={tableSelector} actions={userBox} />;
+    return <StatePage title="Turnier wurde abgebrochen" detail="Warte auf die nächste Turniervorbereitung." tableSelector={tableSelector} actions={headerMenu} overlay={settingsOverlay} />;
   }
 
   if (isRegistration || !status || !status.tournamentName) {
@@ -104,7 +144,8 @@ export default function TableDisplayPage({ status, distribution, currentUser, on
       title={selectedTableLabel}
       detail="Turnier wird vorbereitet. Eine konkrete Tischverteilung erscheint nach der Anlage des Turniers."
       tableSelector={tableSelector}
-      actions={userBox}
+      actions={headerMenu}
+      overlay={settingsOverlay}
     />;
   }
 
@@ -118,7 +159,7 @@ export default function TableDisplayPage({ status, distribution, currentUser, on
           </div>
           <div className={styles.headerActions}>
             {tableSelector}
-            {userBox}
+            {headerMenu}
           </div>
         </header>
         <section className={styles.preparationBoard}>
@@ -131,6 +172,7 @@ export default function TableDisplayPage({ status, distribution, currentUser, on
             interactive={false}
           />
         </section>
+        {settingsOverlay}
       </main>
     );
   }
@@ -145,7 +187,7 @@ export default function TableDisplayPage({ status, distribution, currentUser, on
           </div>
           <div className={styles.headerActions}>
             {tableSelector}
-            {userBox}
+            {headerMenu}
           </div>
         </header>
 
@@ -189,6 +231,7 @@ export default function TableDisplayPage({ status, distribution, currentUser, on
             <p>{status.payoutSummaryEnabled ? 'Die Auszahlungsübersicht wurde noch nicht erfasst.' : 'Für dieses Turnier ist keine Auszahlungsübersicht vorgesehen.'}</p>
           )}
         </section>
+        {settingsOverlay}
       </main>
     );
   }
@@ -202,8 +245,7 @@ export default function TableDisplayPage({ status, distribution, currentUser, on
         </div>
         <div className={styles.headerActions}>
           {tableSelector}
-          {boardToggle}
-          {userBox}
+          {headerMenu}
         </div>
       </header>
 
@@ -218,11 +260,12 @@ export default function TableDisplayPage({ status, distribution, currentUser, on
         canReturnToRegistration={false}
         actionBusy={false}
       />
+      {settingsOverlay}
     </main>
   );
 }
 
-function StatePage({ title, detail, tableSelector, actions }) {
+function StatePage({ title, detail, tableSelector, actions, overlay }) {
   return (
     <main className={`${styles.tableDisplay} ${styles.statePage}`}>
       <section>
@@ -232,6 +275,7 @@ function StatePage({ title, detail, tableSelector, actions }) {
         {tableSelector}
         {actions}
       </section>
+      {overlay}
     </main>
   );
 }
