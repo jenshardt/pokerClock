@@ -1,37 +1,92 @@
 # PokerClock – Pokerturniere digital organisieren
 
-Eine auf **Spring Boot** + **React** basierende Webanwendung zur digitalen Vorbereitung, Durchführung und Verwaltung von Pokerturnieren mit Live-Tischverteilung, Blindstruktur-Verwaltung, kontrolliertem Turnierstart per **Shuffle Up and Deal**, manuellem Tischmanagement und abschließender Ergebnisregistrierung.
-
-## ToDos
-
-- Build und Deploy automatisieren
-  - scp -r .\pokerClock <USER>@192.168.178.58:/home/<USER>/
-- Zeit läuft auf Tablet immer noch anders als auf dem Handy oder dem Laptop
-- View Table
-  - Anzeige an View von Admin anpassen (Daten / Stats links und rechts der Zeit)
-  - Bei Tuniervorbereitung "Tisch x" groß in der Mitte des Bildschirms platzieren
-  - "Tisch 1", "Tisch 2", "Tisch 3", ... auswählbar, solange in der Tuniervorbereitung nicht anders gesetzt - wenn dieser Tisch nicht vergeben wird, dann Anzeige "Tisch nicht in Nutzung!"
-- View Floorman
-  - Weiter "zusammendampfen", z.B. indem die Zeit / Blindstufen aufgeklappt werden können
-- View Admin 
-
----
+PokerClock ist eine auf **Spring Boot** + **React** basierende Webanwendung zur digitalen Vorbereitung, Durchführung und Verwaltung von Pokerturnieren mit unterstützenden Features wie einer zufälligen Tischverteilung, Verwaltung der Blingstrukturen, Tisch- und Rebuymanagement und abschließendem Tunierabschluss.
 
 ## 📋 Inhaltsverzeichnis
 
-1. [Architektur](#-architektur)
-2. [Technologie-Stack](#-technologie-stack)
-3. [Projekt-Struktur](#-projekt-struktur)
-4. [Build & Entwicklung](#-build--entwicklung)
-5. [Docker: Build, Deploy & Start](#-docker-build-deploy--start)
-6. [Raspberry Pi & Android-PWA MVP](#-raspberry-pi--android-pwa-mvp)
-7. [Aktueller Entwicklungsstand](#-aktueller-entwicklungsstand)
-8. [Screenshots der Anwendung](#-screenshots-der-anwendung)
-9. [Funktionen & Features](#-funktionen--features)
-10. [Exemplarischer Turnierablauf](#-exemplarischer-turnierablauf)
+1. [Funktionen & Features](#-funktionen--features)
+2. [Exemplarischer Turnierablauf](#-exemplarischer-turnierablauf)
+3. [Architektur](#-architektur)
+4. [Technologie-Stack](#-technologie-stack)
+5. [Projekt-Struktur](#-projekt-struktur)
+6. [Build & Entwicklung](#-build--entwicklung)
+7. [Docker: Build, Deploy & Start](#-docker-build-deploy--start)
+8. [MiniPC & Android-PWA MVP](#-minipc--android-pwa-mvp)
+9. [Aktueller Entwicklungsstand](#-aktueller-entwicklungsstand)
+10. [Screenshots der Anwendung](#-screenshots-der-anwendung)
 11. [Beiträge & Änderungswünsche](#beiträge--änderungswünsche)
 12. [Lizenz](#lizenz)
 13. [Haftungsausschluss](#-haftungsausschluss)
+
+---
+
+## ✨ Funktionen & Features
+
+### Phase 1: Turnierkonfiguration
+- ✓ Mehrstufige Registrierung mit gruppierten Eingaben
+- ✓ Flexibles Rebuy-System
+- ✓ Blindstruktur-Editor mit Levels + Breaks
+- ✓ Speichern von Registrierungsvorlagen in PostgreSQL beziehungsweise Import/Export für Turniervorlagen
+
+### Phase 2: Tischverteilung & Vorbereitung
+- ✓ Automatische zufällige Tischverteilung
+- ✓ Dealer- und Blinds-Positionen
+- ✓ Optionale Neutral-Dealer-Regel
+- ✓ Visuelle Vorschau vor Turnierbeginn
+
+### Phase 3: Live-Turnier
+- ✓ Echtzeit-Blind-Countdown und Sprachansagen
+- ✓ Spielerstatus, Rebuys und Seat Open
+- ✓ Pause, Resume und Turnierende
+- ✓ Tischmanagement im pausierten Turnier
+
+### Phase 4: Ergebnisse & Auszahlung
+- ✓ Zusammenfassung mit Turnier-Statistiken
+- ✓ Automatische Preispool-Berechnung
+- ✓ Auszahlungs-Presets und individuelle Verteilungen
+- ✓ Deal-Modus mit Spieler-Auswahl
+- ✓ Validierung und optionales Speichern von Ergebnissen
+
+### Zusatzfeatures
+- ✓ Authentifizierung und Session-Management
+- ✓ Responsives Design für Desktop und Tablet
+- ✓ Sound-Einstellungen und Dark Mode
+- ✓ Persistent Login und Benutzerfeedback
+
+---
+
+## 🧭 Exemplarischer Turnierablauf
+
+### 1. Anmeldung
+- Benutzer meldet sich mit berechtigtem Account an.
+- Session-Token wird im Frontend gespeichert.
+
+### 2. Turnier vorbereiten
+- Turnierdaten, Buy-in-/Rebuy-Regeln, Teilnehmerliste und Blindstruktur erfassen.
+- Optional als Vorlage speichern oder bestehende Vorlage laden.
+
+### 3. Tischverteilung erzeugen
+- Turnier aus Vorlage erstellen.
+- Sitzplätze werden auf Tische verteilt und im Vorbereitungsscreen angezeigt.
+
+### 4. Turnier starten
+- In der Tischverteilung wird mit **„Turnier kann beginnen“** auf die Turnierseite gewechselt.
+- Das Turnier befindet sich dort zunächst im Zustand **bereit**.
+- Erst mit **Shuffle Up and Deal** startet Level 1 fachlich und technisch.
+
+### 5. Live-Spielbetrieb
+- Während des Spiels: Seat Open markieren und Rebuy erfassen.
+- Bei Bedarf Turnier pausieren, zum Beispiel für organisatorische Aktionen.
+
+### 6. Tischmanagement im Pausenmodus
+- **Tische ausgleichen:** Ein Spieler wird vom größten zum kleinsten aktiven Tisch verschoben.
+- **Final Table erstellen:** Verfügbare aktive Spieler werden auf **Tisch 1** zusammengeführt.
+- Beide Aktionen sind nur verfügbar, wenn das Turnier pausiert ist.
+
+### 7. Turnier beenden und Ergebnis erfassen
+- Turnier beenden öffnet die Zusammenfassung mit Kennzahlen.
+- Preispool berechnen, Auszahlungsmodus wählen und Spieler zuordnen.
+- Ergebnis optional im Backend speichern.
 
 ---
 
@@ -132,7 +187,6 @@ PokerClock/
 - **Node.js** 18+ (für Frontend)
 - **Java 25** (für Backend)
 - **Maven 3.8+** (für Backend)
-- Optional: **Docker Desktop** (für containerisierte Entwicklung)
 
 ### Entwicklung (lokal)
 
@@ -224,17 +278,48 @@ mvn clean package -DskipTests
 - `db_data` – PostgreSQL Daten (persistent über Restarts)
 - Automatische Datenbank-Initialisierung beim ersten Start
 
-### Logs in Docker Desktop
-- Klick auf einen Service → **Logs** Tab → Echtzeit-Ausgabe
+### Docker-Logs auf dem MiniPC
 
-### Build und Deploy auf dem Raspberry Pi
+```bash
+cd /srv/docker/pokerclock
+docker compose logs --tail=100 db backend frontend
+```
 
-Die produktive Zielumgebung ist ein Raspberry Pi 5 mit 64-Bit-Raspberry-Pi-OS (`aarch64`) und Docker Engine für `linux/arm64`. Der System-Nginx terminiert HTTPS; Docker Compose veröffentlicht PokerClock ausschließlich auf dem lokalen Host-Port `127.0.0.1:8085`.
+### Build und Deploy auf dem MiniPC
 
-1. **Aktuellen Quellcode auf den Pi übertragen.** Verwende dafür den etablierten Weg des Projekts, etwa `git pull` in einem bereits geklonten Repository oder eine Kopie per `scp`. Die vorhandene Datei `.env` auf dem Pi nicht überschreiben.
-2. **Zum Projekt wechseln und die Konfiguration prüfen:**
+Die produktive Zielumgebung ist ein Ubuntu-MiniPC mit Docker Engine. Der Reverse Proxy terminiert HTTPS; Docker Compose veröffentlicht PokerClock ausschließlich auf dem lokalen Host-Port `127.0.0.1:8085`.
+
+1. **Auf dem MiniPC in das Git-Repository wechseln und lokalen Zustand prüfen:**
    ```bash
-   cd ~/pokerClock
+   cd /srv/docker/pokerclock
+   git status --short --branch
+   git fetch origin
+   ```
+   Die produktive `.env` und `secrets/users.json` werden nicht von Git verwaltet und bleiben beim Branch-Wechsel erhalten. Andere lokale Änderungen, zum Beispiel an `docker-compose.yml`, müssen vor dem Wechsel übernommen oder gesichert werden:
+   ```bash
+   git diff -- docker-compose.yml
+   git stash push -m "MiniPC lokale Compose-Konfiguration" -- docker-compose.yml
+   ```
+
+2. **Den Produktiv-Branch `main` auf dem MiniPC auschecken und aktualisieren:**
+   ```bash
+   cd /srv/docker/pokerclock
+   git checkout main
+   git pull --ff-only origin main
+   ```
+   Soll stattdessen ein anderer Branch deployed werden, ersetzt du in beiden Befehlen `main`, zum Beispiel:
+   ```bash
+   git checkout feature/rollen
+   git pull --ff-only origin feature/rollen
+   ```
+   Wenn der Branch auf dem MiniPC noch nicht lokal existiert, verwende:
+   ```bash
+   git checkout -b feature/rollen origin/feature/rollen
+   ```
+
+3. **Zum Projekt wechseln und die Konfiguration prüfen:**
+   ```bash
+   cd /srv/docker/pokerclock
    test -f .env && echo ".env vorhanden" || cp .env.example .env
    nano .env
    ```
@@ -243,21 +328,21 @@ Die produktive Zielumgebung ist ein Raspberry Pi 5 mit 64-Bit-Raspberry-Pi-OS (`
    cp secrets/users.example.json secrets/users.json
    chmod 600 secrets/users.json
    ```
-3. **Images für ARM bauen und Container starten:**
+4. **Images für den MiniPC bauen und Container starten:**
    ```bash
    docker compose up --build -d
    ```
-4. **Start und Backend-Gesundheit prüfen:**
+5. **Start und Backend-Gesundheit prüfen:**
    ```bash
    docker compose ps
    docker compose exec backend curl -f http://localhost:8081/actuator/health
    ```
-5. **Den externen Zugriff prüfen:**
+6. **Den externen Zugriff prüfen:**
    ```bash
    curl --cacert /etc/nginx/certs/home-ca.crt -I https://pokerclock.local
    ```
    Erwartet wird eine erfolgreiche HTTP-Antwort, nicht `502 Bad Gateway`.
-6. **Bei einem Fehler die Containerprotokolle lesen:**
+7. **Bei einem Fehler die Containerprotokolle lesen:**
    ```bash
    docker compose logs --tail=100 db backend frontend
    ```
@@ -276,23 +361,143 @@ Die Installation setzt voraus, dass Android dem Zertifikat der Home-CA vertraut 
 
 ---
 
-## Raspberry Pi & Android-PWA MVP
+## MiniPC & Android-PWA MVP
 
-PokerClock läuft auf einem Raspberry Pi 5 mit 64-Bit-Raspberry-Pi-OS im Heimnetz unter `https://pokerclock.local`. Die Android-Steuerung wird zunächst über dieselbe mobil nutzbare React-Anwendung wie im Browser bereitgestellt. Die Installation als Progressive Web App (PWA) ist ein nachfolgender Arbeitsschritt und benötigt weder einen App Store noch einen kostenpflichtigen Dienst.
+PokerClock wird im Heimnetz auf dem Ubuntu-MiniPC unter `/srv/docker/pokerclock` betrieben. Der MiniPC baut und startet die drei Docker-Compose-Dienste `db`, `backend` und `frontend`. Der Reverse Proxy auf dem MiniPC stellt die Anwendung unter `https://pokerclock.local` bereit; die Namensauflösung erfolgt durch den bestehenden dnsmasq-Dienst. Die Android-Steuerung verwendet dieselbe responsive React-Anwendung und kann anschließend als PWA installiert werden.
+
+### Deployment auf dem MiniPC
+
+Die folgenden Schritte sind nach Komponenten getrennt. Befehle unter **Entwicklungs-PC** werden in der lokalen Git-Arbeitskopie ausgeführt. Befehle unter **MiniPC** werden per SSH auf dem Server ausgeführt.
+
+#### 1. Änderungen auf dem Entwicklungs-PC veröffentlichen
+
+**Komponente: Entwicklungs-PC, im Repository `pokerClock`**
+
+```bash
+git status
+git add README.md
+git commit -m "Dokumentiere MiniPC-Deployment"
+git push origin feature/rollen
+```
+
+Wenn die Änderungen bereits auf dem Remote-Branch liegen, entfällt dieser Schritt.
+
+#### 2. Quellcode auf dem MiniPC aktualisieren
+
+**Komponente: MiniPC**
+
+```bash
+cd /srv/docker/pokerclock
+git fetch origin
+git checkout feature/rollen
+git pull --ff-only origin feature/rollen
+git status --short --branch
+```
+
+Lokale produktive Dateien wie `.env` und `secrets/users.json` dürfen nicht durch den Git-Abgleich überschrieben werden.
+
+#### 3. Produktionskonfiguration auf dem MiniPC prüfen
+
+**Komponente: MiniPC, Datei `/srv/docker/pokerclock/.env`**
+
+```bash
+nano /srv/docker/pokerclock/.env
+```
+
+Die Datei muss mindestens enthalten:
+
+```dotenv
+POSTGRES_PASSWORD=<starkes-datenbankpasswort>
+DB_PASSWORD=<dasselbe-datenbankpasswort>
+APP_SEED_USERS_FILE=./secrets/users.json
+```
+
+**Komponente: MiniPC, Datei `/srv/docker/pokerclock/secrets/users.json`**
+
+```bash
+mkdir -p /srv/docker/pokerclock/secrets
+cp /srv/docker/pokerclock/secrets/users.example.json /srv/docker/pokerclock/secrets/users.json
+nano /srv/docker/pokerclock/secrets/users.json
+chmod 600 /srv/docker/pokerclock/secrets/users.json
+```
+
+In `users.json` stehen die Startbenutzer mit ihren Passwörtern. Die Datei wird nicht committed und von Docker read-only als Secret in den Backend-Container eingebunden.
+
+#### 4. Docker-Stack auf dem MiniPC neu bauen und starten
+
+**Komponente: MiniPC, Docker Compose im Projektverzeichnis**
+
+```bash
+cd /srv/docker/pokerclock
+docker compose config --quiet
+docker compose build --no-cache backend frontend
+docker compose up -d --force-recreate
+```
+
+Ein normales Update löscht die Datenbank nicht. `docker compose down -v` darf nur verwendet werden, wenn die Datenbank einschließlich Benutzer und Turniere bewusst gelöscht werden soll.
+
+#### 5. Start auf dem MiniPC prüfen
+
+**Komponente: MiniPC**
+
+```bash
+cd /srv/docker/pokerclock
+docker compose ps
+docker compose exec backend curl -f http://localhost:8081/actuator/health
+docker compose logs --tail=200 db backend frontend
+```
+
+Die Container `db` und `backend` müssen `healthy` sein. Beim ersten Start müssen im Backend-Log Einträge wie `Seed user 'Admin' created.` erscheinen.
+
+Die Seed-Benutzer können ohne Passwörter abgefragt werden:
+
+**Komponente: MiniPC, PostgreSQL im Docker-Container**
+
+```bash
+docker compose exec db psql -U postgres -d pokerclock -c \
+"SELECT id, username, role, created_at, updated_at FROM app_user ORDER BY id;"
+```
+
+#### 6. DNS, Reverse Proxy und Zugriff prüfen
+
+**Komponente: MiniPC, dnsmasq**
+
+```bash
+getent hosts pokerclock.local
+```
+
+Die Ausgabe muss auf die LAN-IP des MiniPCs zeigen. Der vorhandene dnsmasq-Eintrag darf nicht durch einen zweiten Eintrag für denselben Hostnamen dupliziert werden.
+
+**Komponente: MiniPC, Reverse Proxy**
+
+```bash
+curl -k -I https://pokerclock.local
+```
+
+**Komponente: Client im Heimnetz, zum Beispiel Laptop oder Smartphone**
+
+Im Browser öffnen:
+
+```text
+https://pokerclock.local
+```
+
+Der Reverse Proxy terminiert HTTPS und leitet zum lokal gebundenen PokerClock-Frontend weiter. Backend, Management-Port und PostgreSQL werden nicht direkt im Heimnetz veröffentlicht.
 
 ### Zieltopologie
 
-- Der auf dem Raspberry Pi installierte System-Nginx belegt den externen Port 80 und routet `pokerclock.local` zum PokerClock-Frontend.
-- Docker Compose veröffentlicht ausschließlich das Frontend auf `127.0.0.1:8085`.
-- Frontend, Backend und PostgreSQL kommunizieren im privaten Compose-Netz. Backend, Management-Port und Datenbank werden nicht direkt im Heimnetz veröffentlicht.
-- Die Namensauflösung von `pokerclock.local` erfolgt über den bestehenden `dnsmasq`-Eintrag auf die Raspberry-Pi-IP `192.168.178.58`. Der Nginx Reverse Proxy ersetzt diese Namensauflösung nicht.
+- Entwicklungs-PC: Git-Arbeitskopie, Tests und Push auf den Remote-Branch.
+- MiniPC: Git-Checkout, Docker Compose, PostgreSQL, Spring Boot und Frontend-Nginx.
+- Reverse Proxy auf dem MiniPC: HTTPS für `pokerclock.local` und Weiterleitung zum Frontend.
+- dnsmasq auf dem MiniPC: Auflösung von `pokerclock.local` auf die LAN-IP des MiniPCs.
+- Client: Zugriff per Browser oder installierter Android-PWA.
 
 ```text
 Laptop oder Android-PWA
    |
 https://pokerclock.local
    |
-System-Nginx mit HTTPS auf dem Raspberry Pi
+Reverse Proxy mit HTTPS auf dem MiniPC
    |
 127.0.0.1:8085 -> Frontend-Nginx -> /api -> Spring Boot -> PostgreSQL
 ```
@@ -300,12 +505,12 @@ System-Nginx mit HTTPS auf dem Raspberry Pi
 ### Noch offene Umsetzungsschritte
 
 1. **Mobile Turniersteuerung liefern:** Für kleine Displays eine fokussierte Ansicht mit Uhr, Blindstufen, Spielerzahlen sowie Pause, Fortsetzen, Beenden, Seat Open und Rebuy implementieren. Registrierung und Tischvorbereitung bleiben im MVP auf dem Laptop.
-2. **Mehrgerätebetrieb erweitern und nachweisen:** Browser- und Android-PWA-Szenarien gegen den Raspberry Pi durchführen.
+2. **Mehrgerätebetrieb erweitern und nachweisen:** Browser- und Android-PWA-Szenarien gegen den MiniPC durchführen.
 
 ### MVP-Regeln
 
 - Mehrere berechtigte Geräte dürfen gleichzeitig verbunden sein; ein exklusiver Steuerungs-Lock ist nicht Bestandteil des MVP.
-- Eine PWA benötigt eine Verbindung zum Heimnetz und zum Raspberry Pi; Offline-Steuerung gehört nicht zum Umfang.
+- Eine PWA benötigt eine Verbindung zum Heimnetz und zum MiniPC; Offline-Steuerung gehört nicht zum Umfang.
 - Die spätere Entwicklung einer nativen Android-App bleibt möglich, weil sie denselben versionierten API-Vertrag verwenden kann.
 
 ---
@@ -314,7 +519,7 @@ System-Nginx mit HTTPS auf dem Raspberry Pi
 
 ### Umgesetzt
 
-- Docker-Deployment auf dem Raspberry Pi über `linux/arm64`, lokaler Frontend-Port `127.0.0.1:8085`, System-Nginx, HTTPS und `dnsmasq` für `pokerclock.local`.
+- Docker-Deployment auf dem Ubuntu-MiniPC, lokaler Frontend-Port `127.0.0.1:8085`, Reverse Proxy, HTTPS und `dnsmasq` für `pokerclock.local`.
 - Persistierte Workflow-Phasen `REGISTRATION`, `PREPARATION` und `TOURNAMENT`. Neu verbundene Browser leiten ihre Ansicht aus `GET /api/status` ab.
 - Serverseitig erzeugte Tischverteilung; der Client erzeugt keine fachlich maßgebliche Zufallsverteilung.
 - Gemeinsame Ansicht bei Übergängen zwischen Vorbereitung, Turniersteuerung und Registrierung.
@@ -332,16 +537,17 @@ System-Nginx mit HTTPS auf dem Raspberry Pi
 
 Diese Punkte sollten erledigt sein, bevor du die App anderen zeigst oder in ein erreichbares Umfeld deployest.
 
-### A) Für **lokales Docker Desktop** (lokal)
+### A) Für das Deployment auf dem MiniPC
 
 1. **Lokale Secrets setzen, nie committen**
    - `.env.example` nach `.env` kopieren.
    - Starke Werte für `POSTGRES_PASSWORD` und `DB_PASSWORD` setzen.
    - Sicherstellen, dass `.env` nicht versioniert ist.
 
-2. **Seed-Admin nur bei Bedarf aktivieren**
-   - Optional `APP_SEED_ADMIN_USERNAME` und `APP_SEED_ADMIN_PASSWORD` setzen.
-   - Für normale Nutzung leer lassen, damit kein Auto-Seed erfolgt.
+2. **Seed-Benutzer konfigurieren**
+   - Eine lokale `secrets/users.json` aus `secrets/users.example.json` erzeugen.
+   - Sichere Passwörter setzen und `APP_SEED_USERS_FILE=./secrets/users.json` in `.env` eintragen.
+   - Die Seed-Datei wird von Docker als read-only Secret an das Backend übergeben.
 
 3. **Image/Code-Stand bereinigen**
    - Keine Build-Artefakte in Git (`target/`, `dist/`).
@@ -482,101 +688,6 @@ Nach dem Klick auf „Turnier beenden":
 
 ---
 
-## ✨ Funktionen & Features
-
-### Phase 1: Turnierkonfiguration
-- ✓ Mehrstufige Registrierung mit gruppierten Eingaben
-- ✓ Flexibles Rebuy-System (ONE_PER_PLAYER, N_WHILE_ELIGIBLE, etc.)
-- ✓ Blindstruktur-Editor (Levels + Breaks)
-- ✓ Speichern von Registrierungsvorlagen in PostgreSQL
-- ✓ JSON-Import/Export für Turniervorlagen
-- ✓ Validierung und Fehlerbehandlung
-
-### Phase 2: Tischverteilung & Vorbereitung
-- ✓ Automatische zufällige Tischverteilung
-- ✓ Dealer & Blinds-Positionen
-- ✓ Optionale Neutral-Dealer-Regel
-- ✓ Visuelle Vorschau vor Turnierbeginn
-- ✓ Kontrollierter Übergang auf die Turnierseite mit Bestätigungsdialog
-- ✓ Fachliche Trennung zwischen **Turnierseite öffnen** und **Turnier wirklich starten**
-
-### Phase 3: Live Tournament
-- ✓ Startphase mit Status **Turnier bereit**
-- ✓ Start des Turniers erst über **Shuffle Up and Deal**
-- ✓ Beep-Sequenz vor Turnierstart und vor Blindwechseln
-- ✓ Sprachansage parallel zum Start der Clock bei **Shuffle Up and Deal**
-- ✓ Echtzeit-Blind-Countdown
-- ✓ Aktuelle Blindstufe anzeigen
-- ✓ Spielerjlist (aktiv / ausgeschieden)
-- ✓ Rebuy registrieren
-- ✓ Spieler als Seat Open markieren
-- ✓ Pause / Resume / End Tournament
-- ✓ Manuelles **Tische ausgleichen** (nur im pausierten Turnier)
-- ✓ Manuelles **Final Table erstellen** (nur im pausierten Turnier, wenn Spieler auf einen Tisch passen)
-- ✓ Tischmanagement im Turnier über **Settings ein-/ausblendbar**
-- ✓ Schutzdialog beim Zurückgehen zur Konfiguration mit Hinweis auf Turnierabbruch
-
-### Phase 4: Ergebnisse & Auszahlung
-- ✓ Summary mit Turnier-Statistiken
-- ✓ Summary-Screenshot und visuell geführter Abschlussdialog
-- ✓ Automatische Preispool-Berechnung
-- ✓ Auszahlungs-Presets (60/40, 50/30/20, Top-N-dynamisch)
-- ✓ Custom-Verteilung (Prozent oder Betrag)
-- ✓ Deal-Modus mit Spieler-Auswahl
-- ✓ Automatische Platz-Vorschläge nach Ausscheidungsreihenfolge
-- ✓ Validierung von Prozent/Betrag-Summen
-- ✓ Optionales Speichern von Ergebnis & Konfiguration im Backend
-- ✓ Summary nur über die vorgesehenen Buttons verlassbar
-
-### Zusatzfeatures
-- ✓ Authentifizierung & Session-Management
-- ✓ Responsives Design (Desktop, Tablet)
-- ✓ Sound-Einstellungen (Blind-Ansagen, Fanfaren)
-- ✓ Gruppierte Settings-Bereiche (Sound / Anzeige)
-- ✓ Dark Mode Theme
-- ✓ Error-Messages & User Feedback
-- ✓ Persistent Login (Token in localStorage)
-
----
-
-## 🧭 Exemplarischer Turnierablauf
-
-### 1. Anmeldung
-- Benutzer meldet sich mit berechtigtem Account an.
-- Session-Token wird im Frontend gespeichert.
-
-### 2. Turnier vorbereiten
-- Turnierdaten, Buy-in/Rebuy-Regeln, Teilnehmerliste und Blindstruktur erfassen.
-- Optional als Vorlage speichern oder bestehende Vorlage laden.
-
-### 3. Tischverteilung erzeugen
-- Turnier aus Vorlage erstellen.
-- Sitzplätze werden auf Tische verteilt und im Vorbereitungsscreen angezeigt.
-
-### 4. Turnier starten
-- In der Tischverteilung wird mit **„Turnier kann beginnen“** auf die Turnierseite gewechselt.
-- Das Turnier befindet sich dort zunächst im Zustand **bereit**.
-- Erst mit **Shuffle Up and Deal** startet Level 1 fachlich und technisch.
-
-### 5. Live-Spielbetrieb
-- Während des Spiels: Seat Open markieren und Rebuy erfassen.
-- Bei Bedarf Turnier pausieren (z. B. für organisatorische Aktionen).
-- Ein Zurückgehen in die Konfiguration ist nur nach Bestätigung möglich und bricht das laufende Turnier bewusst ab.
-
-### 6. Tischmanagement im Pausenmodus
-- **Tische ausgleichen:** Ein Spieler wird vom größten zum kleinsten aktiven Tisch verschoben.
-- **Final Table erstellen:** Verfügbare aktive Spieler werden auf **Tisch 1** zusammengeführt.
-- Beide Aktionen sind nur verfügbar, wenn das Turnier pausiert ist.
-- Über Settings kann die Anzeige des Tischmanagements auf der Turnierseite ein- oder ausgeschaltet werden.
-
-### 7. Turnier beenden und Ergebnis erfassen
-- Turnier beenden öffnet die Zusammenfassung mit Kennzahlen.
-- Preispool berechnen, Auszahlungsmodus wählen, Spieler zuordnen.
-- Die Zusammenfassung ist als Abschlussdialog ausgelegt und bleibt offen, bis sie aktiv beendet wird.
-- Ergebnis optional im Backend speichern.
-
----
-
 ## 🚀 Getting Started Schnellübersicht
 
 ### 1. **Lokal entwickeln (Schnellste Variante)**
@@ -589,12 +700,13 @@ cd frontend && npm run dev
 ```
 → Öffne `http://localhost:5173`
 
-### 2. **Mit Docker Compose (Production-Like)**
+### 2. **Mit Docker Compose auf dem MiniPC**
 ```bash
+cd /srv/docker/pokerclock
 docker compose up --build
 ```
-→ Öffne `http://localhost:3000`
-→ Logs in Docker Desktop UI
+→ Öffne `https://pokerclock.local`
+→ Logs: `docker compose logs --tail=100 db backend frontend`
 
 ### 3. **Build für Production**
 ```bash
