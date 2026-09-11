@@ -373,6 +373,14 @@ export function createSoundManager() {
     await speak(`At table ${tableNumber}, seat ${seatNumber}: ${name}.${roleSentence}`, { lang: 'en-US' });
   };
 
+  const announceSeatOpen = async ({ tableNumber, seatNumber, playerName }) => {
+    const name = String(playerName || '').trim();
+    if (!name) {
+      return;
+    }
+    await speak(`Seat open on table ${tableNumber}, seat ${seatNumber}, ${name}`, { lang: 'en-US' });
+  };
+
   const runDemo = async () => {
     await announceBlindLevelChange('50/100');
 
@@ -395,6 +403,7 @@ export function createSoundManager() {
     speak,
     speakPlayerName,
     announceSeatPlacement,
+    announceSeatOpen,
     announceBlindLevelChange,
     announceStageStart,
     announceBreak,

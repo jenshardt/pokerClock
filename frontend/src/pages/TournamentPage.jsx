@@ -436,10 +436,11 @@ export default function TournamentPage({
     }
   };
 
-  const handleSeatSelect = ({ table, seat, seatIndex, seatStatus, roles }) => {
+  const handleSeatSelect = ({ table, tableIndex, seat, seatIndex, seatStatus, roles }) => {
     setSelectedSeatAction({
       playerName: seat.player,
       tableName: table.tableName,
+      tableNumber: tableIndex + 1,
       seatNumber: seatIndex + 1,
       seatStatus,
       roles,
@@ -450,7 +451,10 @@ export default function TournamentPage({
     if (!selectedSeatAction?.playerName) {
       return;
     }
-    const success = await markSeatOpen(selectedSeatAction.playerName);
+    const success = await markSeatOpen(selectedSeatAction.playerName, {
+      tableNumber: selectedSeatAction.tableNumber,
+      seatNumber: selectedSeatAction.seatNumber,
+    });
     if (success) {
       setSelectedSeatAction((current) => current ? { ...current, seatStatus: 'eliminated' } : null);
     }

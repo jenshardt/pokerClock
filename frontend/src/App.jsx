@@ -764,7 +764,22 @@ function App() {
   const jumpToNextLevel = async () => runTournamentAction('/api/level/next');
   const jumpToPreviousLevel = async () => runTournamentAction('/api/level/previous');
   const endTournament = async () => runTournamentAction('/api/end');
-  const markSeatOpen = async (playerName) => runTournamentAction('/api/seat-open', { playerName });
+  const markSeatOpen = async (playerName, seatContext = null) => {
+    const success = await runTournamentAction('/api/seat-open', { playerName });
+    if (success && seatContext) {
+      try {
+        const sound = getSoundManager();
+        await sound.announceSeatOpen({
+          tableNumber: seatContext.tableNumber,
+          seatNumber: seatContext.seatNumber,
+          playerName,
+        });
+      } catch (error) {
+        console.error(error);
+      }
+    }
+    return success;
+  };
   const addRebuy = async (playerName) => runTournamentAction('/api/rebuy', { playerName });
   const balanceTables = async () => runTournamentAction('/api/table/balance');
   const createFinalTable = async () => runTournamentAction('/api/table/final-table');
