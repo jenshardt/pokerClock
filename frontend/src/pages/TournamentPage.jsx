@@ -93,6 +93,7 @@ export default function TournamentPage({
   const isRunning = statusText === 'Turnier läuft';
   const isEnded = statusText === 'Turnier beendet';
   const isReady = statusText === 'Turnier bereit';
+  const isBreak = !isEnded && status?.currentBlind === 'Break';
   const heroClockText = formatClock(status?.remainingSeconds);
   const [activeTablePopup, setActiveTablePopup] = useState(null);
   const [selectedSeatAction, setSelectedSeatAction] = useState(null);
@@ -466,7 +467,7 @@ export default function TournamentPage({
   return (
     <section className={`${styles.tournamentScreen} ${compact ? styles.compactTournamentScreen : ''} card`}>
       <div className={styles.topLine}>
-        <div className={styles.levelLabel}>Level {status?.currentLevelNumber ?? '—'}</div>
+        <div className={styles.levelLabel}>{isBreak ? 'Break' : `Level ${status?.currentLevelNumber ?? '—'}`}</div>
         <div className={`${styles.statusBadge} ${isRunning ? styles.statusRunning : isPaused ? styles.statusPaused : styles.statusEnded}`}>
           {statusText}
         </div>
@@ -486,7 +487,7 @@ export default function TournamentPage({
               </div>
             </div>
 
-            <div className={styles.centerPanel}>
+            <div className={`${styles.centerPanel} ${isBreak ? styles.breakPanel : ''}`}>
               <div className={styles.centerTop}>
                 <p className={styles.tournamentName}>{status.tournamentName || '—'}</p>
               </div>
