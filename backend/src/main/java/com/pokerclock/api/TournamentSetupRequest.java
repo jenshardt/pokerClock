@@ -13,6 +13,8 @@ public class TournamentSetupRequest {
     private int blindDurationSeconds;
     private boolean hasNeutralDealer;
     private boolean rebuyAllowed;
+    private String rebuyMode;
+    private Integer rebuyMaxCount;
     private boolean payoutSummaryEnabled;
 
     public String getTournamentName() {
@@ -85,6 +87,22 @@ public class TournamentSetupRequest {
 
     public void setRebuyAllowed(boolean rebuyAllowed) {
         this.rebuyAllowed = rebuyAllowed;
+    }
+
+    public String getRebuyMode() {
+        return rebuyMode;
+    }
+
+    public void setRebuyMode(String rebuyMode) {
+        this.rebuyMode = rebuyMode;
+    }
+
+    public Integer getRebuyMaxCount() {
+        return rebuyMaxCount;
+    }
+
+    public void setRebuyMaxCount(Integer rebuyMaxCount) {
+        this.rebuyMaxCount = rebuyMaxCount;
     }
 
     public boolean isPayoutSummaryEnabled() {

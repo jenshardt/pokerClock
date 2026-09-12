@@ -2,7 +2,9 @@ package com.pokerclock.api;
 
 import java.util.ArrayList;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class TournamentStatusResponse {
 
@@ -17,6 +19,9 @@ public class TournamentStatusResponse {
     private String completionReason;
     private boolean payoutSummaryEnabled;
     private boolean rebuyAllowed;
+    private int rebuyMaxCount;
+    private boolean rebuyWindowClosed;
+    private Map<String, Integer> rebuyCounts = new HashMap<>();
     private List<TournamentPayoutSummaryEntry> payoutSummary = new ArrayList<>();
     private Instant generatedAt;
     private long version;
@@ -128,6 +133,30 @@ public class TournamentStatusResponse {
 
     public void setRebuyAllowed(boolean rebuyAllowed) {
         this.rebuyAllowed = rebuyAllowed;
+    }
+
+    public int getRebuyMaxCount() {
+        return rebuyMaxCount;
+    }
+
+    public void setRebuyMaxCount(int rebuyMaxCount) {
+        this.rebuyMaxCount = rebuyMaxCount;
+    }
+
+    public boolean isRebuyWindowClosed() {
+        return rebuyWindowClosed;
+    }
+
+    public void setRebuyWindowClosed(boolean rebuyWindowClosed) {
+        this.rebuyWindowClosed = rebuyWindowClosed;
+    }
+
+    public Map<String, Integer> getRebuyCounts() {
+        return rebuyCounts;
+    }
+
+    public void setRebuyCounts(Map<String, Integer> rebuyCounts) {
+        this.rebuyCounts = rebuyCounts;
     }
 
     public Instant getGeneratedAt() {
@@ -346,6 +375,21 @@ public class TournamentStatusResponse {
 
         public Builder rebuyAllowed(boolean rebuyAllowed) {
             response.rebuyAllowed = rebuyAllowed;
+            return this;
+        }
+
+        public Builder rebuyMaxCount(int rebuyMaxCount) {
+            response.rebuyMaxCount = rebuyMaxCount;
+            return this;
+        }
+
+        public Builder rebuyWindowClosed(boolean rebuyWindowClosed) {
+            response.rebuyWindowClosed = rebuyWindowClosed;
+            return this;
+        }
+
+        public Builder rebuyCounts(Map<String, Integer> rebuyCounts) {
+            response.rebuyCounts = rebuyCounts;
             return this;
         }
 

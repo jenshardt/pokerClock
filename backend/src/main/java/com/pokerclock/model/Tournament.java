@@ -3,7 +3,9 @@ package com.pokerclock.model;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Entity
 @Table(name = "tournaments")
@@ -24,6 +26,9 @@ public class Tournament {
     private int blindDurationSeconds;
     private boolean hasNeutralDealer;
     private boolean rebuyAllowed;
+    private String rebuyMode;
+    private Integer rebuyMaxCount;
+    private boolean rebuyWindowClosed;
     private boolean payoutSummaryEnabled;
     private String status;
     private String workflowPhase;
@@ -51,6 +56,12 @@ public class Tournament {
     @CollectionTable(name = "tournament_eliminated_players", joinColumns = @JoinColumn(name = "tournament_id"))
     @Column(name = "player_name")
     private List<String> eliminatedPlayers = new ArrayList<>();
+
+    @ElementCollection
+    @CollectionTable(name = "tournament_rebuy_counts", joinColumns = @JoinColumn(name = "tournament_id"))
+    @MapKeyColumn(name = "player_name")
+    @Column(name = "rebuy_count")
+    private Map<String, Integer> rebuyCounts = new HashMap<>();
 
     public Tournament() {
     }
@@ -249,5 +260,37 @@ public class Tournament {
 
     public void setEliminatedPlayers(List<String> eliminatedPlayers) {
         this.eliminatedPlayers = eliminatedPlayers;
+    }
+
+    public String getRebuyMode() {
+        return rebuyMode;
+    }
+
+    public void setRebuyMode(String rebuyMode) {
+        this.rebuyMode = rebuyMode;
+    }
+
+    public Integer getRebuyMaxCount() {
+        return rebuyMaxCount;
+    }
+
+    public void setRebuyMaxCount(Integer rebuyMaxCount) {
+        this.rebuyMaxCount = rebuyMaxCount;
+    }
+
+    public boolean isRebuyWindowClosed() {
+        return rebuyWindowClosed;
+    }
+
+    public void setRebuyWindowClosed(boolean rebuyWindowClosed) {
+        this.rebuyWindowClosed = rebuyWindowClosed;
+    }
+
+    public Map<String, Integer> getRebuyCounts() {
+        return rebuyCounts;
+    }
+
+    public void setRebuyCounts(Map<String, Integer> rebuyCounts) {
+        this.rebuyCounts = rebuyCounts;
     }
 }

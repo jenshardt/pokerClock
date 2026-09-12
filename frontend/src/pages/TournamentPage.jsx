@@ -468,6 +468,14 @@ export default function TournamentPage({
     setSelectedSeatAction(null);
   };
 
+  const selectedRebuyUsed = selectedSeatAction
+    ? Number(status?.rebuyCounts?.[selectedSeatAction.playerName] || 0)
+    : 0;
+  const rebuyMaxPerPlayer = Number(status?.rebuyMaxCount || 0);
+  const rebuyWindowClosed = Boolean(status?.rebuyWindowClosed);
+  const rebuyLimitReached = rebuyMaxPerPlayer > 0 && selectedRebuyUsed >= rebuyMaxPerPlayer;
+  const rebuyBlocked = !status?.rebuyAllowed || rebuyWindowClosed || rebuyLimitReached;
+
   return (
     <section className={`${styles.tournamentScreen} ${compact ? styles.compactTournamentScreen : ''} card`}>
       <div className={styles.topLine}>
@@ -567,14 +575,20 @@ export default function TournamentPage({
                       type="button"
                       className="primary-button"
                       onClick={handleRebuy}
-                      disabled={actionBusy || isEnded || !status?.rebuyAllowed || selectedSeatAction.seatStatus !== 'eliminated'}
+                      disabled={actionBusy || isEnded || rebuyBlocked || selectedSeatAction.seatStatus !== 'eliminated'}
                     >
                       Rebuy
                     </button>
                     <button type="button" className="ghost-button" onClick={() => setSelectedSeatAction(null)} disabled={actionBusy}>Schließen</button>
                   </div>
                   {!status?.rebuyAllowed && <p className={styles.seatActionHint}>Rebuys sind für dieses Turnier nicht aktiviert.</p>}
-                  {status?.rebuyAllowed && selectedSeatAction.seatStatus === 'active' && (
+                  {status?.rebuyAllowed && rebuyWindowClosed && (
+                    <p className={styles.seatActionHint}>Das Rebuy-Fenster ist geschlossen, da nicht mehr alle Spieler eligible sind.</p>
+                  )}
+                  {status?.rebuyAllowed && !rebuyWindowClosed && rebuyLimitReached && (
+                    <p className={styles.seatActionHint}>Das Rebuy-Limit für diesen Spieler ist erreicht{rebuyMaxPerPlayer > 0 ? ` (max. ${rebuyMaxPerPlayer}).` : '.'}</p>
+                  )}
+                  {status?.rebuyAllowed && !rebuyBlocked && selectedSeatAction.seatStatus === 'active' && (
                     <p className={styles.seatActionHint}>Für einen Rebuy zuerst „Seat open“ wählen. Danach wird „Rebuy“ für diesen Spieler aktiv.</p>
                   )}
                 </div>

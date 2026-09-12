@@ -16,8 +16,10 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.time.temporal.ChronoUnit;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
@@ -34,6 +36,9 @@ public class TournamentService {
     private static final String PHASE_PREPARATION = "PREPARATION";
     private static final String PHASE_TOURNAMENT = "TOURNAMENT";
     private static final int BALANCE_MIN_DIFFERENCE = 2;
+    private static final String REBUY_ONE_PER_PLAYER = "ONE_PER_PLAYER";
+    private static final String REBUY_ONE_WHILE_ALL_ELIGIBLE = "ONE_WHILE_ALL_ELIGIBLE";
+    private static final String REBUY_N_WHILE_ALL_ELIGIBLE = "N_WHILE_ALL_ELIGIBLE";
 
     private static final TypeReference<List<TableState>> TABLE_STATE_TYPE = new TypeReference<>() {
     };
@@ -59,6 +64,10 @@ public class TournamentService {
         tournament.setBlindDurationSeconds(request.getBlindDurationSeconds());
         tournament.setHasNeutralDealer(request.isHasNeutralDealer());
         tournament.setRebuyAllowed(request.isRebuyAllowed());
+        tournament.setRebuyMode(request.getRebuyMode());
+        tournament.setRebuyMaxCount(request.getRebuyMaxCount());
+        tournament.setRebuyWindowClosed(false);
+        tournament.setRebuyCounts(new HashMap<>());
         tournament.setPayoutSummaryEnabled(request.isPayoutSummaryEnabled());
         int entries = request.getParticipants() != null ? request.getParticipants().size() : 0;
         tournament.setEntries(entries);
@@ -261,6 +270,12 @@ public class TournamentService {
             eliminated.add(target);
         }
 
+        // Once a player busts with no rebuys left, the field is no longer "all eligible".
+        if (tournament.isRebuyAllowed() && isRebuyWindowMode(tournament)
+                && rebuyCountFor(tournament, target) >= maxRebuysPerPlayer(tournament)) {
+            tournament.setRebuyWindowClosed(true);
+        }
+
         int nextPlayersLeft = Math.max(0, tournament.getParticipants().size() - eliminated.size());
         tournament.setPlayersLeft(nextPlayersLeft);
         repository.save(tournament);
@@ -281,14 +296,54 @@ public class TournamentService {
         }
 
         List<String> eliminated = tournament.getEliminatedPlayers();
-        boolean removed = eliminated.remove(target);
-        if (!removed) {
+        if (!eliminated.contains(target)) {
             return;
         }
+
+        if (isRebuyWindowMode(tournament) && tournament.isRebuyWindowClosed()) {
+            throw new IllegalStateException("Rebuys sind nicht mehr möglich, da nicht mehr alle Spieler eligible sind.");
+        }
+
+        int used = rebuyCountFor(tournament, target);
+        if (used >= maxRebuysPerPlayer(tournament)) {
+            throw new IllegalStateException("Das Rebuy-Limit für diesen Spieler ist erreicht.");
+        }
+
+        eliminated.remove(target);
+        Map<String, Integer> rebuyCounts = tournament.getRebuyCounts();
+        rebuyCounts.put(target, used + 1);
 
         tournament.setPlayersLeft(Math.max(0, tournament.getParticipants().size() - eliminated.size()));
         tournament.setRebuys(Math.max(0, tournament.getRebuys()) + 1);
         repository.save(tournament);
+    }
+
+    private String normalizeRebuyMode(String mode) {
+        if (REBUY_ONE_WHILE_ALL_ELIGIBLE.equals(mode) || REBUY_N_WHILE_ALL_ELIGIBLE.equals(mode)) {
+            return mode;
+        }
+        return REBUY_ONE_PER_PLAYER;
+    }
+
+    private boolean isRebuyWindowMode(Tournament tournament) {
+        String mode = normalizeRebuyMode(tournament.getRebuyMode());
+        return REBUY_ONE_WHILE_ALL_ELIGIBLE.equals(mode) || REBUY_N_WHILE_ALL_ELIGIBLE.equals(mode);
+    }
+
+    private int maxRebuysPerPlayer(Tournament tournament) {
+        if (REBUY_N_WHILE_ALL_ELIGIBLE.equals(normalizeRebuyMode(tournament.getRebuyMode()))) {
+            Integer max = tournament.getRebuyMaxCount();
+            return Math.max(1, max != null ? max : 1);
+        }
+        return 1;
+    }
+
+    private int rebuyCountFor(Tournament tournament, String playerName) {
+        Map<String, Integer> counts = tournament.getRebuyCounts();
+        if (counts == null) {
+            return 0;
+        }
+        return counts.getOrDefault(playerName, 0);
     }
 
     @Transactional
@@ -453,6 +508,9 @@ public class TournamentService {
                 .completionReason(completionReason.name())
                 .payoutSummaryEnabled(tournament.isPayoutSummaryEnabled())
                 .rebuyAllowed(tournament.isRebuyAllowed())
+                .rebuyMaxCount(tournament.isRebuyAllowed() ? maxRebuysPerPlayer(tournament) : 0)
+                .rebuyWindowClosed(isRebuyWindowMode(tournament) && tournament.isRebuyWindowClosed())
+                .rebuyCounts(new HashMap<>(tournament.getRebuyCounts() == null ? Map.of() : tournament.getRebuyCounts()))
                 .payoutSummary(payoutSummary)
                 .generatedAt(Instant.now())
                 .version(tournament.getVersion())

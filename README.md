@@ -12,11 +12,12 @@ PokerClock ist eine auf **Spring Boot** + **React** basierende Webanwendung zur 
 6. [Build & Entwicklung](#-build--entwicklung)
 7. [Docker: Build, Deploy & Start](#-docker-build-deploy--start)
 8. [MiniPC & Android-PWA MVP](#-minipc--android-pwa-mvp)
-9. [Aktueller Entwicklungsstand](#-aktueller-entwicklungsstand)
-10. [Screenshots der Anwendung](#-screenshots-der-anwendung)
-11. [Beiträge & Änderungswünsche](#beiträge--änderungswünsche)
-12. [Lizenz](#lizenz)
-13. [Haftungsausschluss](#-haftungsausschluss)
+9. [Installed Services](docs/installed-services.md)
+10. [Aktueller Entwicklungsstand](#-aktueller-entwicklungsstand)
+11. [Screenshots der Anwendung](#-screenshots-der-anwendung)
+12. [Beiträge & Änderungswünsche](#beiträge--änderungswünsche)
+13. [Lizenz](#lizenz)
+14. [Haftungsausschluss](#-haftungsausschluss)
 
 ---
 

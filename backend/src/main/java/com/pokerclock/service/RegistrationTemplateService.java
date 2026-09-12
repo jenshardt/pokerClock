@@ -62,6 +62,8 @@ public class RegistrationTemplateService {
         request.setStartingChips(template.getStartingStack());
         request.setHasNeutralDealer(template.isHasNeutralDealer());
         request.setRebuyAllowed(template.isRebuyEnabled());
+        request.setRebuyMode(template.getRebuyMode());
+        request.setRebuyMaxCount(template.getRebuyMaxCount());
         request.setPayoutSummaryEnabled(template.isPayoutSummaryEnabled());
 
         String blindStructure = template.getBlindLevels().stream()

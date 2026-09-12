@@ -295,6 +295,73 @@ class TournamentServiceTest {
     }
 
     @Test
+    void secondRebuyIsRejectedInOnePerPlayerMode() {
+        tournament.setRebuyAllowed(true);
+        tournament.setRebuyMode("ONE_PER_PLAYER");
+        tournament.getRebuyCounts().put("Alice", 1);
+        tournament.setEliminatedPlayers(new ArrayList<>(List.of("Alice")));
+        when(repository.findTopByOrderByCreatedAtDesc()).thenReturn(Optional.of(tournament));
+
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> tournamentService.registerRebuy("Alice", 0)
+        );
+
+        assertEquals("Das Rebuy-Limit für diesen Spieler ist erreicht.", exception.getMessage());
+    }
+
+    @Test
+    void rebuyIsAllowedUpToMaxCountInNMode() {
+        tournament.setRebuyAllowed(true);
+        tournament.setRebuyMode("N_WHILE_ALL_ELIGIBLE");
+        tournament.setRebuyMaxCount(2);
+        tournament.getRebuyCounts().put("Alice", 1);
+        tournament.setEliminatedPlayers(new ArrayList<>(List.of("Alice")));
+        tournament.setPlayersLeft(5);
+        when(repository.findTopByOrderByCreatedAtDesc()).thenReturn(Optional.of(tournament));
+        when(repository.save(any(Tournament.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        tournamentService.registerRebuy("Alice", 0);
+
+        assertEquals(2, tournament.getRebuyCounts().get("Alice"));
+        assertTrue(tournament.getEliminatedPlayers().isEmpty());
+        assertEquals(1, tournament.getRebuys());
+    }
+
+    @Test
+    void rebuyBeyondMaxCountIsRejectedInNMode() {
+        tournament.setRebuyAllowed(true);
+        tournament.setRebuyMode("N_WHILE_ALL_ELIGIBLE");
+        tournament.setRebuyMaxCount(2);
+        tournament.getRebuyCounts().put("Alice", 2);
+        tournament.setEliminatedPlayers(new ArrayList<>(List.of("Alice")));
+        when(repository.findTopByOrderByCreatedAtDesc()).thenReturn(Optional.of(tournament));
+
+        assertThrows(IllegalStateException.class, () -> tournamentService.registerRebuy("Alice", 0));
+    }
+
+    @Test
+    void rebuyWindowClosesWhenExhaustedPlayerBustsAndBlocksOthers() {
+        tournament.setRebuyAllowed(true);
+        tournament.setRebuyMode("ONE_WHILE_ALL_ELIGIBLE");
+        tournament.getRebuyCounts().put("Alice", 1);
+        tournament.setEliminatedPlayers(new ArrayList<>());
+        when(repository.findTopByOrderByCreatedAtDesc()).thenReturn(Optional.of(tournament));
+        when(repository.save(any(Tournament.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        tournamentService.seatOpen("Alice", 0);
+        assertTrue(tournament.isRebuyWindowClosed());
+
+        tournament.setEliminatedPlayers(new ArrayList<>(List.of("Bob")));
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> tournamentService.registerRebuy("Bob", 0)
+        );
+
+        assertEquals("Rebuys sind nicht mehr möglich, da nicht mehr alle Spieler eligible sind.", exception.getMessage());
+    }
+
+    @Test
     void balanceTablesMovesOnePlayerWhenDifferenceIsLargeEnough() throws Exception {
         tournament.setStatus("PAUSED");
         tournament.setTableDistributionJson("""
