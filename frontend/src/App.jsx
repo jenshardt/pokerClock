@@ -780,7 +780,22 @@ function App() {
     }
     return success;
   };
-  const addRebuy = async (playerName) => runTournamentAction('/api/rebuy', { playerName });
+  const addRebuy = async (playerName, seatContext = null) => {
+    const success = await runTournamentAction('/api/rebuy', { playerName });
+    if (success && seatContext) {
+      try {
+        const sound = getSoundManager();
+        await sound.announceRebuy({
+          tableNumber: seatContext.tableNumber,
+          seatNumber: seatContext.seatNumber,
+          playerName,
+        });
+      } catch (error) {
+        console.error(error);
+      }
+    }
+    return success;
+  };
   const balanceTables = async () => runTournamentAction('/api/table/balance');
   const createFinalTable = async () => runTournamentAction('/api/table/final-table');
   const returnToRegistration = async () => runTournamentAction('/api/return-to-registration');

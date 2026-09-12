@@ -289,6 +289,12 @@
   gap: 8px;
 }
 
+.rebuyButton:disabled {
+  background: rgba(120, 140, 130, 0.22);
+  color: rgba(230, 240, 235, 0.45);
+  opacity: 1;
+}
+
 .seatActionHint {
   width: 100%;
   margin: 0;

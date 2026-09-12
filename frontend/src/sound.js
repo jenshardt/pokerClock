@@ -381,6 +381,14 @@ export function createSoundManager() {
     await speak(`Seat open on table ${tableNumber}, seat ${seatNumber}, ${name}`, { lang: 'en-US' });
   };
 
+  const announceRebuy = async ({ tableNumber, seatNumber, playerName }) => {
+    const name = String(playerName || '').trim();
+    if (!name) {
+      return;
+    }
+    await speak(`Rebuy from ${name} on table ${tableNumber}, seat ${seatNumber}`, { lang: 'en-US' });
+  };
+
   const runDemo = async () => {
     await announceBlindLevelChange('50/100');
 
@@ -404,6 +412,7 @@ export function createSoundManager() {
     speakPlayerName,
     announceSeatPlacement,
     announceSeatOpen,
+    announceRebuy,
     announceBlindLevelChange,
     announceStageStart,
     announceBreak,

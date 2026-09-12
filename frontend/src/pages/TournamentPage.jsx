@@ -464,8 +464,13 @@ export default function TournamentPage({
     if (!selectedSeatAction?.playerName) {
       return;
     }
-    await addRebuy(selectedSeatAction.playerName);
-    setSelectedSeatAction(null);
+    const success = await addRebuy(selectedSeatAction.playerName, {
+      tableNumber: selectedSeatAction.tableNumber,
+      seatNumber: selectedSeatAction.seatNumber,
+    });
+    if (success) {
+      setSelectedSeatAction(null);
+    }
   };
 
   const selectedRebuyUsed = selectedSeatAction
@@ -573,7 +578,7 @@ export default function TournamentPage({
                     </button>
                     <button
                       type="button"
-                      className="primary-button"
+                      className={`primary-button ${styles.rebuyButton}`}
                       onClick={handleRebuy}
                       disabled={actionBusy || isEnded || rebuyBlocked || selectedSeatAction.seatStatus !== 'eliminated'}
                     >
