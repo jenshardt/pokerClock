@@ -28,6 +28,11 @@ public class SchemaPatchConfig {
             jdbcTemplate.execute("ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS completion_reason varchar(32) DEFAULT 'NONE'");
             jdbcTemplate.execute("UPDATE tournaments SET completion_reason = 'NONE' WHERE completion_reason IS NULL");
 
+            // Rebuy rule enforcement fields added later; keep existing volumes loadable.
+            jdbcTemplate.execute("ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS rebuy_mode varchar(32)");
+            jdbcTemplate.execute("ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS rebuy_max_count integer");
+            jdbcTemplate.execute("ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS rebuy_window_closed boolean DEFAULT false NOT NULL");
+
             jdbcTemplate.execute("ALTER TABLE registration_templates ADD COLUMN IF NOT EXISTS payout_summary_enabled boolean DEFAULT false NOT NULL");
 
             jdbcTemplate.execute("ALTER TABLE tournament_result_archives ADD COLUMN IF NOT EXISTS tournament_id bigint");
