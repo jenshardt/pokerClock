@@ -28,7 +28,7 @@ public class AuthController {
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request,
                                                HttpServletRequest httpRequest) {
         String ip = resolveClientIp(httpRequest);
-        if (!rateLimiter.tryConsume(ip)) {
+        if (!rateLimiter.tryConsume(ip, request.getUsername())) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                     .header("Retry-After", String.valueOf(LoginRateLimiterService.REFILL_PERIOD.getSeconds()))
                     .build();
