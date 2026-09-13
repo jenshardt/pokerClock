@@ -1,7 +1,13 @@
 version: '3.9'
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
 services:
   db:
     image: postgres:16
+    logging: *default-logging
     environment:
       POSTGRES_DB: pokerclock
       POSTGRES_USER: postgres
@@ -33,6 +39,7 @@ services:
       db:
         condition: service_healthy
     restart: unless-stopped
+    logging: *default-logging
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8081/actuator/health || exit 1"]
       interval: 15s
@@ -50,6 +57,7 @@ services:
       backend:
         condition: service_healthy
     restart: unless-stopped
+    logging: *default-logging
     mem_limit: 128m
     cpus: 0.5
 
@@ -61,6 +69,7 @@ services:
       frontend:
         condition: service_started
     restart: unless-stopped
+    logging: *default-logging
     mem_limit: 128m
     cpus: 0.5
 volumes:

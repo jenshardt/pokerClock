@@ -20,7 +20,7 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class AuthService {
 
-    static final Duration SESSION_TTL = Duration.ofHours(8);
+    static final Duration SESSION_TTL = Duration.ofHours(14);
 
     private final AppUserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
