@@ -46,6 +46,15 @@ services:
       backend:
         condition: service_healthy
     restart: unless-stopped
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    # Quick Tunnel: erzeugt bei jedem Start eine zufaellige *.trycloudflare.com URL, siehe Logs
+    command: tunnel --no-autoupdate --url http://frontend:80
+    depends_on:
+      frontend:
+        condition: service_started
+    restart: unless-stopped
 volumes:
   db_data:
 secrets:
