@@ -1,17 +1,29 @@
 server:
   port: 8080
+  tomcat:
+    threads:
+      max: 50
+    accept-count: 20
+    connection-timeout: 10s
+  max-http-request-header-size: 8KB
 
 spring:
   datasource:
     url: jdbc:postgresql://${DB_HOST:db}:${DB_PORT:5432}/${DB_NAME:pokerclock}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 10
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: false
   main:
     allow-bean-definition-overriding: true
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 2MB
 
 management:
   server:

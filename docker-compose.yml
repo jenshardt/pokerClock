@@ -13,6 +13,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    mem_limit: 512m
+    cpus: 1.0
 
   backend:
     build:
@@ -36,6 +38,8 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
+    mem_limit: 768m
+    cpus: 1.5
 
   frontend:
     build:
@@ -46,6 +50,8 @@ services:
       backend:
         condition: service_healthy
     restart: unless-stopped
+    mem_limit: 128m
+    cpus: 0.5
 
   cloudflared:
     image: cloudflare/cloudflared:latest
@@ -55,6 +61,8 @@ services:
       frontend:
         condition: service_started
     restart: unless-stopped
+    mem_limit: 128m
+    cpus: 0.5
 volumes:
   db_data:
 secrets:
